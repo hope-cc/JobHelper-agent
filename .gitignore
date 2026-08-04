@@ -16,3 +16,6 @@ config.yaml
 # claude
 .claude/
 CLAUDE.md
+
+#持久化
+data/
