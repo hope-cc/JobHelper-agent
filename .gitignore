@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+
+# 本地配置（含密钥，勿提交）
+config.yaml
+
+# 工具缓存
+.pytest_cache/
+
+# claude
+.claude/
+CLAUDE.md
