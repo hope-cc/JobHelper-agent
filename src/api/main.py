@@ -6,9 +6,10 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.api.routes import router, set_llm_client
-from src.config.loader import load_providers
+from src.api.routes import router, set_llm_client, set_registry
+from src.config.loader import load_providers, load_app_settings
 from src.llm.factory import create_client
+from src.tools.registry import ToolRegistry
 
 
 def create_app() -> FastAPI:
@@ -65,6 +66,23 @@ def main():
 
     client = create_client(provider)
     set_llm_client(client)
+
+    # 初始化工具注册中心
+    registry = ToolRegistry.get_instance()
+    registry.discover("src.tools.builtin")
+    tool_count = len(registry.list_definitions())
+    if tool_count > 0:
+        print(f"已加载 {tool_count} 个工具: {[d['name'] for d in registry.list_definitions()]}")
+    else:
+        print("提示: 未发现任何工具（在 src/tools/builtin/ 下创建工具文件即可自动发现）")
+    set_registry(registry)
+
+    # 注入子 agent worker_fn（mock 实现，后续替换为真实实现）
+    from src.tools.builtin.dispatch_tasks import task_dispatcher
+    settings = load_app_settings(config_path)
+    max_concurrency = settings.get("max_concurrency", 3)
+    task_dispatcher.set_provider_config(provider)
+    task_dispatcher.set_worker_num(max_concurrency)
 
     app = create_app()
 

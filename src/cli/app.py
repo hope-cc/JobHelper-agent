@@ -10,7 +10,18 @@ from pathlib import Path
 
 from src.config.loader import load_providers
 from src.llm.factory import create_client
-from src.llm.types import Message, ProviderConfig, TextChunk, ThinkingChunk
+from src.llm.types import (
+    Message,
+    ProviderConfig,
+    TextChunk,
+    ThinkingChunk,
+    ToolCallStartChunk,
+    ToolCallDeltaChunk,
+    ToolCallEndChunk,
+    ToolResultEvent,
+)
+from src.chat.graph import build_graph, ChatState
+from src.tools.registry import ToolRegistry
 
 
 # ---- ANSI 终端样式 ----
@@ -76,9 +87,18 @@ async def ainput(prompt: str = "") -> str:
 
 
 async def chat_loop(client, provider: ProviderConfig) -> None:
-    """多轮对话循环。"""
+    """多轮对话循环，使用 ReAct 图驱动。"""
     messages: list[Message] = []
     client_display = f"{provider.name}/{provider.model}"
+
+    # 初始化工具注册中心
+    registry = ToolRegistry.get_instance()
+    registry.discover("src.tools.builtin")
+    tool_count = len(registry.list_definitions())
+    if tool_count > 0:
+        print(f"已加载 {tool_count} 个工具: {[d['name'] for d in registry.list_definitions()]}")
+
+    graph = build_graph(client, registry)
 
     print(f"\n===== JobHelper 对话 Demo ({client_display}) =====")
     print("输入 /quit 退出，Ctrl+C 也可退出")
@@ -102,31 +122,64 @@ async def chat_loop(client, provider: ProviderConfig) -> None:
         # 追加用户消息
         messages.append(Message(role="user", content=user_input))
 
-        # 流式输出 LLM 回复
+        # 通过 ReAct 图执行
         print()
         full_response: list[str] = []
         thinking_active = False
+        tool_calls_active: dict[str, str] = {}  # tool_id → tool_name
+
+        initial_state: ChatState = {
+            "messages": list(messages),
+            "response": "",
+            "tool_calls": [],
+            "loop_count": 0,
+        }
 
         try:
-            async for event in client.stream(messages):
-                if isinstance(event, ThinkingChunk):
-                    if not thinking_active:
-                        thinking_active = True
-                        print(f"  {_dim('[思考]')} ", end="", flush=True)
-                    print(_faint(event.delta), end="", flush=True)
+            async for mode, payload in graph.astream(
+                initial_state,
+                stream_mode=["custom", "values"],
+            ):
+                if mode == "custom":
+                    event = payload
 
-                elif isinstance(event, TextChunk):
-                    if thinking_active:
-                        thinking_active = False
-                        print()
-                        print(f"  {_dim('[思考结束]')}")
-                        print(f"Assistant > ", end="", flush=True)
+                    if isinstance(event, ThinkingChunk):
+                        if not thinking_active:
+                            thinking_active = True
+                            print(f"  {_dim('[思考]')} ", end="", flush=True)
+                        print(_faint(event.delta), end="", flush=True)
 
-                    elif not full_response:
-                        print(f"Assistant > ", end="", flush=True)
+                    elif isinstance(event, TextChunk):
+                        if thinking_active:
+                            thinking_active = False
+                            print()
+                            print(f"  {_dim('[思考结束]')}")
+                            print(f"Assistant > ", end="", flush=True)
+                        elif not full_response:
+                            print(f"Assistant > ", end="", flush=True)
+                        print(event.delta, end="", flush=True)
+                        full_response.append(event.delta)
 
-                    print(event.delta, end="", flush=True)
-                    full_response.append(event.delta)
+                    elif isinstance(event, ToolCallStartChunk):
+                        tool_calls_active[event.tool_id] = event.tool_name
+                        print(f"\n  {_dim('[调用工具]')} {event.tool_name} ...", end="", flush=True)
+
+                    elif isinstance(event, ToolCallDeltaChunk):
+                        pass  # JSON 片段不逐字展示
+
+                    elif isinstance(event, ToolCallEndChunk):
+                        pass
+
+                    elif isinstance(event, ToolResultEvent):
+                        name = tool_calls_active.get(event.tool_id, "?")
+                        # 截取前 100 字符作为摘要
+                        summary = event.content[:100].replace("\n", " ")
+                        print(f"\n  {_dim('[工具结果]')} {name}: {summary}", flush=True)
+
+                elif mode == "values":
+                    # 状态更新
+
+                    pass
 
         except Exception as e:
             print(f"\n  [调用错误: {e}]")

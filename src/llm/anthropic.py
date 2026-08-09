@@ -34,12 +34,16 @@ class AnthropicAdapter(BaseLLMClient):
         )
         self.model = config.model
         self.thinking = config.thinking
+        self._current_tool_id: str | None = None
 
-    async def stream(self, messages: list[Message]) -> AsyncIterator[StreamEvent]:
+    async def stream(
+        self,
+        messages: list[Message],
+        system: str = "",
+        tools: list[dict] | None = None,
+    ) -> AsyncIterator[StreamEvent]:
         """发送消息，返回统一 StreamEvent 异步迭代器。"""
-        api_messages = [
-            {"role": m.role, "content": m.content} for m in messages
-        ]
+        api_messages = [_to_anthropic_message(m) for m in messages]
 
         stream_kwargs: dict = {
             "model": self.model,
@@ -47,11 +51,22 @@ class AnthropicAdapter(BaseLLMClient):
             "max_tokens": 4096,
         }
 
+        if system:
+            stream_kwargs["system"] = [{
+                "type": "text",
+                "text": system,
+                "cache_control": {"type": "ephemeral"},
+            }]
+
         if self.thinking:
             stream_kwargs["thinking"] = {
                 "type": "enabled",
                 "budget_tokens": THINKING_BUDGET_TOKENS,
             }
+
+        if tools:
+            # 直接透传：list_definitions() 的格式与 Anthropic tools 参数一致
+            stream_kwargs["tools"] = tools
 
         async with self.client.messages.stream(**stream_kwargs) as stream:
             async for event in stream:
@@ -74,9 +89,10 @@ class AnthropicAdapter(BaseLLMClient):
             if block is not None:
                 block_type = getattr(block, "type", None)
                 if block_type == "tool_use":
+                    self._current_tool_id = getattr(block, "id", "")
                     return [
                         ToolCallStartChunk(
-                            tool_id=getattr(block, "id", ""),
+                            tool_id=self._current_tool_id,
                             tool_name=getattr(block, "name", ""),
                         )
                     ]
@@ -100,7 +116,7 @@ class AnthropicAdapter(BaseLLMClient):
                 return [
                     ToolCallDeltaChunk(
                         tool_args_delta=getattr(delta, "partial_json", ""),
-                        tool_id="",  # Anthropic delta 不携带 id
+                        tool_id=self._current_tool_id or "",
                     )
                 ]
 
@@ -108,10 +124,51 @@ class AnthropicAdapter(BaseLLMClient):
 
         # --- ContentBlockStopEvent ---
         if event_type == "content_block_stop":
-            return [ToolCallEndChunk(tool_id="")]
+            tid = self._current_tool_id or ""
+            self._current_tool_id = None
+            return [ToolCallEndChunk(tool_id=tid)]
 
         # --- MessageStopEvent ---
         if event_type == "message_stop":
             return []
 
         return []
+
+
+# ---- 内部辅助 ----
+
+def _to_anthropic_message(m: Message) -> dict:
+    """将统一 Message 转为 Anthropic API 格式。
+
+    处理三种情况：
+    - tool 角色 → user 消息含 tool_result block
+    - assistant 含 tool_calls → content 数组含 text + tool_use blocks
+    - 普通消息 → 直接透传
+    """
+    # tool 结果 → user 消息包裹 tool_result
+    if m.role == "tool":
+        return {
+            "role": "user",
+            "content": [
+                {
+                    "type": "tool_result",
+                    "tool_use_id": m.tool_call_id or "",
+                    "content": m.content,
+                }
+            ],
+        }
+
+    # assistant 工具调用历史 → text + tool_use blocks
+    if m.role == "assistant" and m.tool_calls:
+        blocks: list[dict] = [{"type": "text", "text": m.content}]
+        for tc in m.tool_calls:
+            blocks.append({
+                "type": "tool_use",
+                "id": tc.tool_id,
+                "name": tc.tool_name,
+                "input": tc.arguments,
+            })
+        return {"role": "assistant", "content": blocks}
+
+    # 普通 user / assistant 消息
+    return {"role": m.role, "content": m.content}

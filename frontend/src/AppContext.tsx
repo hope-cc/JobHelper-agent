@@ -5,7 +5,7 @@ import {
   type Dispatch,
   type ReactNode,
 } from "react";
-import type { AppState, AppAction } from "./types";
+import type { AppState, AppAction, ToolCallState } from "./types";
 
 const initialState: AppState = {
   view: "new_chat",
@@ -59,6 +59,71 @@ function reducer(state: AppState, action: AppAction): AppState {
 
     case "SET_STREAMING":
       return { ...state, isStreaming: action.isStreaming };
+
+    case "TOOL_START": {
+      const msgsStart = [...state.messages];
+      const lastStart = msgsStart[msgsStart.length - 1];
+      const newTc: ToolCallState = {
+        toolId: action.toolId,
+        toolName: action.toolName,
+        argsJson: "",
+        result: null,
+        status: "running",
+      };
+      if (lastStart && lastStart.role === "assistant") {
+        msgsStart[msgsStart.length - 1] = {
+          ...lastStart,
+          toolCalls: [...(lastStart.toolCalls || []), newTc],
+        };
+      } else {
+        msgsStart.push({ role: "assistant", content: "", toolCalls: [newTc] });
+      }
+      return { ...state, messages: msgsStart };
+    }
+
+    case "TOOL_DELTA": {
+      const msgsDelta = [...state.messages];
+      const lastDelta = msgsDelta[msgsDelta.length - 1];
+      if (lastDelta && lastDelta.role === "assistant" && lastDelta.toolCalls) {
+        const tcs = lastDelta.toolCalls.map((tc) =>
+          tc.toolId === action.toolId
+            ? { ...tc, argsJson: tc.argsJson + action.delta }
+            : tc
+        );
+        msgsDelta[msgsDelta.length - 1] = { ...lastDelta, toolCalls: tcs };
+      }
+      return { ...state, messages: msgsDelta };
+    }
+
+    case "TOOL_END": {
+      const msgsEnd = [...state.messages];
+      const lastEnd = msgsEnd[msgsEnd.length - 1];
+      if (lastEnd && lastEnd.role === "assistant" && lastEnd.toolCalls) {
+        const tcs = lastEnd.toolCalls.map((tc) =>
+          tc.toolId === action.toolId ? { ...tc, status: "done" as const } : tc
+        );
+        msgsEnd[msgsEnd.length - 1] = { ...lastEnd, toolCalls: tcs };
+      }
+      return { ...state, messages: msgsEnd };
+    }
+
+    case "TOOL_RESULT": {
+      const msgsResult = [...state.messages];
+      const lastResult = msgsResult[msgsResult.length - 1];
+      if (lastResult && lastResult.role === "assistant" && lastResult.toolCalls) {
+        const tcs = lastResult.toolCalls.map((tc) =>
+          tc.toolId === action.toolId
+            ? {
+                ...tc,
+                result: action.content,
+                status: action.isError ? ("error" as const) : ("done" as const),
+              }
+            : tc
+        );
+        msgsResult[msgsResult.length - 1] = { ...lastResult, toolCalls: tcs };
+      }
+      return { ...state, messages: msgsResult };
+    }
 
     default:
       return state;

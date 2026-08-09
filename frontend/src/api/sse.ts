@@ -8,6 +8,10 @@ export type SSECallbacks = {
   onText: (delta: string) => void;
   onDone: () => void;
   onError?: (error: Error) => void;
+  onToolStart?: (toolId: string, toolName: string) => void;
+  onToolDelta?: (toolId: string, delta: string) => void;
+  onToolEnd?: (toolId: string) => void;
+  onToolResult?: (toolId: string, content: string, isError: boolean) => void;
 };
 
 export async function parseSSEStream(
@@ -50,6 +54,41 @@ export async function parseSSEStream(
           } catch {
             // 忽略解析失败的 data
           }
+        } else if (eventType === "tool_start" && dataStr) {
+          try {
+            const parsed = JSON.parse(dataStr);
+            callbacks.onToolStart?.(parsed.tool_id || "", parsed.tool_name || "");
+          } catch {
+            // 忽略
+          }
+        } else if (eventType === "tool_delta" && dataStr) {
+          try {
+            const parsed = JSON.parse(dataStr);
+            callbacks.onToolDelta?.(parsed.tool_id || "", parsed.delta || "");
+          } catch {
+            // 忽略
+          }
+        } else if (eventType === "tool_end" && dataStr) {
+          try {
+            const parsed = JSON.parse(dataStr);
+            callbacks.onToolEnd?.(parsed.tool_id || "");
+          } catch {
+            // 忽略
+          }
+        } else if (eventType === "tool_result" && dataStr) {
+          try {
+            const parsed = JSON.parse(dataStr);
+            callbacks.onToolResult?.(parsed.tool_id || "", parsed.content || "", parsed.is_error || false);
+          } catch {
+            // 忽略
+          }
+        } else if (eventType === "error") {
+          const message = (() => {
+            try { return JSON.parse(dataStr).message || dataStr; } catch { return dataStr; }
+          })();
+          callbacks.onError?.(new Error(message));
+          callbacks.onDone();
+          return;
         } else if (eventType === "done") {
           callbacks.onDone();
           return;

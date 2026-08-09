@@ -17,5 +17,8 @@ config.yaml
 .claude/
 CLAUDE.md
 
+# 日志
+log/
+
 #持久化
 data/

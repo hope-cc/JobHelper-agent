@@ -46,6 +46,18 @@ export default function WelcomeScreen() {
           dispatch({ type: "SET_STREAMING", isStreaming: false });
           console.error("SSE error:", err);
         },
+        onToolStart(toolId, toolName) {
+          dispatch({ type: "TOOL_START", toolId, toolName });
+        },
+        onToolDelta(toolId, delta) {
+          dispatch({ type: "TOOL_DELTA", toolId, delta });
+        },
+        onToolEnd(toolId) {
+          dispatch({ type: "TOOL_END", toolId });
+        },
+        onToolResult(toolId, content, isError) {
+          dispatch({ type: "TOOL_RESULT", toolId, content, isError });
+        },
       });
     } catch (err) {
       dispatch({ type: "SET_STREAMING", isStreaming: false });

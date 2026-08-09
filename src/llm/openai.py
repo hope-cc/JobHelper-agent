@@ -3,6 +3,7 @@
 封装 openai SDK 的异步流式 API，将 SSE chunk 流转换为统一的 StreamEvent。
 """
 
+import json
 from collections.abc import AsyncIterator
 
 from openai import AsyncOpenAI
@@ -29,17 +30,38 @@ class OpenAIAdapter(BaseLLMClient):
         )
         self.model = config.model
 
-    async def stream(self, messages: list[Message]) -> AsyncIterator[StreamEvent]:
+    async def stream(
+        self,
+        messages: list[Message],
+        system: str = "",
+        tools: list[dict] | None = None,
+    ) -> AsyncIterator[StreamEvent]:
         """发送消息，返回统一 StreamEvent 异步迭代器。"""
-        api_messages = [
-            {"role": m.role, "content": m.content} for m in messages
-        ]
+        api_messages = [_to_openai_message(m) for m in messages]
 
-        response = await self.client.chat.completions.create(
-            model=self.model,
-            messages=api_messages,
-            stream=True,
-        )
+        create_kwargs: dict = {
+            "model": self.model,
+            "messages": api_messages,
+            "stream": True,
+        }
+
+        if system:
+            create_kwargs["instructions"] = system
+
+        if tools:
+            create_kwargs["tools"] = [
+                {
+                    "type": "function",
+                    "function": {
+                        "name": t["name"],
+                        "description": t["description"],
+                        "parameters": t["input_schema"],
+                    },
+                }
+                for t in tools
+            ]
+
+        response = await self.client.chat.completions.create(**create_kwargs)
 
         # 追踪 tool_call 生命周期
         seen_tool_calls: dict[int, dict] = {}
@@ -118,3 +140,40 @@ class OpenAIAdapter(BaseLLMClient):
                     )
 
         return results
+
+
+# ---- 内部辅助 ----
+
+def _to_openai_message(m: Message) -> dict:
+    """将统一 Message 转为 OpenAI API 格式。
+
+    处理三种情况：
+    - tool 角色 → 附加 tool_call_id
+    - assistant 含 tool_calls → 附加 tool_calls 数组
+    - 普通消息 → 直接透传
+    """
+    if m.role == "tool":
+        return {
+            "role": "tool",
+            "tool_call_id": m.tool_call_id or "",
+            "content": m.content,
+        }
+
+    if m.role == "assistant" and m.tool_calls:
+        return {
+            "role": "assistant",
+            "content": m.content,
+            "tool_calls": [
+                {
+                    "id": tc.tool_id,
+                    "type": "function",
+                    "function": {
+                        "name": tc.tool_name,
+                        "arguments": json.dumps(tc.arguments, ensure_ascii=False),
+                    },
+                }
+                for tc in m.tool_calls
+            ],
+        }
+
+    return {"role": m.role, "content": m.content}

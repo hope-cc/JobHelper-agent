@@ -1,46 +1,268 @@
-"""LangGraph 对话图。
+"""LangGraph ReAct 对话图。
 
-构建最简 state graph，为后续 agent 功能迭代预留扩展点。
+在 LangGraph 上实现标准 ReAct 循环：
+    chat_node → [有工具调用?] → tool_node → chat_node → ...
+                   ↓ (无)
+                  END
+
+chat_node 调用 LLM 并传入工具定义，tool_node 执行工具并回传结果。
+利用 LangGraph stream_writer 机制实时透传流式事件给上层（API/CLI）。
 """
 
+from __future__ import annotations
+
+import json
+import time
 from typing import TypedDict
 
-from langgraph.graph import StateGraph
+from langgraph.config import get_stream_writer
+from langgraph.graph import END, StateGraph
+from langgraph.types import RunnableConfig
+from typing_extensions import NotRequired
 
 from src.llm.base import BaseLLMClient
-from src.llm.types import Message, TextChunk
+from src.llm.types import (
+    Message,
+    StreamEvent,
+    TextChunk,
+    ThinkingChunk,
+    ToolCall,
+    ToolCallDeltaChunk,
+    ToolCallEndChunk,
+    ToolCallStartChunk,
+    ToolResultEvent,
+)
+from src.logger import graph_loop, llm_request_start, llm_request_done, tool_call_start, tool_call_result, tool_exec
+from src.prompt.prompt import build_system_prompt
+from src.tools.registry import ToolRegistry
+# ---- 常量 ----
+MAX_TOOL_LOOPS = 10
 
+
+# ---- 图状态 ----
 
 class ChatState(TypedDict):
-    """对话状态。
+    """ReAct 对话图状态。
 
-    messages 累积全量对话历史，response 存放本轮完整回复。
+    每次图执行对应一次用户输入 → 最终回复的完整过程。
+    messages 累积全部历史（含 tool 角色消息），
+    tool_calls 存放当前轮 LLM 产出的工具调用列表，
+    loop_count 追踪 ReAct 循环次数。
     """
 
     messages: list[Message]
     response: str
+    tool_calls: NotRequired[list[ToolCall]]
+    loop_count: NotRequired[int]
 
 
-async def chat_node(state: ChatState, *, client: BaseLLMClient) -> dict:
-    """对话节点：调用 LLM 客户端，收集完整回复。"""
-    full_response: list[str] = []
+# ---- 节点 ----
 
-    async for event in client.stream(state["messages"]):
-        if isinstance(event, TextChunk):
-            full_response.append(event.delta)
+async def chat_node(
+    state: ChatState,
+    config: RunnableConfig,
+    *,
+    client: BaseLLMClient,
+    tool_defs: list[dict],
+) -> dict:
+    """调用 LLM 获取回复，收集文本和工具调用。
 
-    return {"response": "".join(full_response)}
+    利用 LangGraph stream_writer 将每个 StreamEvent 实时透传给
+    图的上层调用方（API 层的 astream_events 监听器）。
+
+    工具调用的JSON参数以增量方式到达，在此节点中按 tool_id 拼接，
+    End 事件后统一json.loads 解析。
+    """
+    writer = get_stream_writer()
+    loop = state.get("loop_count", 0)
+
+    full_text: list[str] = []
+    # tool_id → {"name": str, "args_json": str}
+    tool_calls_data: dict[str, dict[str, str]] = {}
+
+    rid = llm_request_start(client.model, len(state["messages"]), len(tool_defs))
+    try:
+        async for event in client.stream(
+            state["messages"],
+            system=build_system_prompt(),
+            tools=tool_defs if tool_defs else None,
+        ):
+            _dispatch_event(event, writer, full_text, tool_calls_data)
+    except Exception:
+        llm_request_done(rid, len("".join(full_text)), -1)
+        raise
+
+    # 拼接完成后逐条解析
+    tool_calls: list[ToolCall] = []
+    for tool_id, data in tool_calls_data.items():
+        try:
+            arguments = json.loads(data["args_json"])
+        except json.JSONDecodeError:
+            arguments = {}
+        tool_calls.append(
+            ToolCall(
+                tool_id=tool_id,
+                tool_name=data["name"],
+                arguments=arguments,
+            )
+        )
+
+    # 构建 assistant 消息
+    text_output = "".join(full_text)
+    llm_request_done(rid, len(text_output), len(tool_calls))
+    for tc in tool_calls:
+        tool_call_start(tc.tool_name, tc.tool_id, json.dumps(tc.arguments, ensure_ascii=False))
+
+    assistant_msg = Message(
+        role="assistant",
+        content=text_output,
+        tool_calls=tool_calls if tool_calls else None,
+    )
+
+    graph_loop(loop, len(state["messages"]), len(tool_defs), len(text_output), len(tool_calls))
+
+    return {
+        "messages": state["messages"] + [assistant_msg],
+        "tool_calls": tool_calls,
+        "loop_count": loop + 1,
+    }
 
 
-def build_graph(client: BaseLLMClient) -> StateGraph:
-    """构建单节点对话图。"""
+async def tool_node(
+    state: ChatState,
+    config: RunnableConfig,
+    *,
+    registry: ToolRegistry,
+) -> dict:
+    """执行工具调用并回传结果。
+
+    遍历 state["tool_calls"]，逐一调用 registry.execute()，
+    每次执行结果：
+    1. 通过 writer 实时透传 ToolResultEvent
+    2. 以 role="tool" 的 Message 追加到对话历史
+    """
+    writer = get_stream_writer()
+
+    tool_messages: list[Message] = []
+
+    for tc in state.get("tool_calls", []):
+        t0 = time.perf_counter()
+        result = await registry.execute(tc.tool_name, tc.arguments)
+        elapsed_ms = int((time.perf_counter() - t0) * 1000)
+
+        tool_exec(tc.tool_name, tc.tool_id, elapsed_ms, result.is_error)
+        tool_call_result(tc.tool_name, tc.tool_id, result.output, result.is_error)
+
+        # 透传执行结果
+        writer(ToolResultEvent(
+            tool_id=tc.tool_id,
+            content=result.output,
+            is_error=result.is_error,
+        ))
+
+        # 工具结果消息
+        tool_messages.append(
+            Message(
+                role="tool",
+                content=result.output,
+                tool_call_id=tc.tool_id,
+            )
+        )
+
+    return {
+        "messages": state["messages"] + tool_messages,
+        "tool_calls": [],
+        "response": "",
+    }
+
+
+# ---- 路由 ----
+
+def _should_continue(state: ChatState) -> str:
+    """条件路由：有工具调用且未超上限则进入 tool_node，否则结束。"""
+    if state.get("tool_calls") and state.get("loop_count", 0) < MAX_TOOL_LOOPS:
+        return "tool_node"
+    return END
+
+
+# ---- 图构建 ----
+
+def build_graph(client: BaseLLMClient, registry: ToolRegistry) -> StateGraph:
+    """构建 ReAct 对话图并编译。
+
+    Args:
+        client: LLM 客户端（AnthropicAdapter / OpenAIAdapter）
+        registry: 工具注册中心
+
+    Returns:
+        编译后的 StateGraph 实例，可调用 .astream_events() 执行
+    """
+    tool_defs = registry.list_definitions()
+
     graph = StateGraph(ChatState)
 
-    async def _chat_node(state: ChatState) -> dict:
-        return await chat_node(state, client=client)
+    # chat_node —— 闭包绑定 client 和 tool_defs
+    async def _chat_node(state: ChatState, config: RunnableConfig) -> dict:
+        return await chat_node(
+            state, config, client=client, tool_defs=tool_defs,
+        )
 
-    graph.add_node("chat", _chat_node)
-    graph.set_entry_point("chat")
-    graph.set_finish_point("chat")
+    # tool_node —— 闭包绑定 registry
+    async def _tool_node(state: ChatState, config: RunnableConfig) -> dict:
+        return await tool_node(state, config, registry=registry)
 
-    return graph
+    graph.add_node("chat_node", _chat_node)
+    graph.add_node("tool_node", _tool_node)
+
+    graph.set_entry_point("chat_node")
+
+    graph.add_conditional_edges(
+        "chat_node",
+        _should_continue,
+        {"tool_node": "tool_node", END: END},
+    )
+    graph.add_edge("tool_node", "chat_node")
+
+    return graph.compile()
+
+
+# ---- 内部辅助 ----
+
+def _dispatch_event(
+    event: StreamEvent,
+    writer,
+    full_text: list[str],
+    tool_calls_data: dict[str, dict[str, str]],
+) -> None:
+    """分发单个 StreamEvent：透传 + 按类型累积。
+
+    Args:
+        event: LLM 适配器产出的流式事件
+        writer: LangGraph stream_writer
+        full_text: 文本缓冲区
+        tool_calls_data: 工具调用数据缓冲区
+    """
+    # 透传给上层
+    writer(event)
+
+    if isinstance(event, TextChunk):
+        full_text.append(event.delta)
+
+    elif isinstance(event, ThinkingChunk):
+        pass  # 思考过程仅透传，不参与最终消息
+
+    elif isinstance(event, ToolCallStartChunk):
+        tool_calls_data[event.tool_id] = {
+            "name": event.tool_name,
+            "args_json": "",
+        }
+
+    elif isinstance(event, ToolCallDeltaChunk):
+        if event.tool_id in tool_calls_data:
+            tool_calls_data[event.tool_id]["args_json"] += event.tool_args_delta
+
+    elif isinstance(event, ToolCallEndChunk):
+        pass  # 参数已累积完整，parse 在循环结束后统一进行
+
+    elif isinstance(event, ToolResultEvent):
+        pass  # tool_node 产出的结果事件，chat_node 不作处理

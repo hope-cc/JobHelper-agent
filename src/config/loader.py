@@ -30,8 +30,18 @@ def load_providers(filepath: str) -> list[ProviderConfig]:
     if raw is None:
         raise ValueError("配置文件内容为空，请至少配置一个供应商。")
 
+    # 兼容两种格式：旧格式为纯列表，新格式为 dict{providers, settings}
+    if isinstance(raw, dict):
+        _settings = raw.get("settings", {})
+        raw = raw.get("providers", [])
+    else:
+        _settings = {}
+
     if not isinstance(raw, list):
-        raise ValueError("配置文件格式错误：顶层应为供应商列表（YAML list）。")
+        raise ValueError(
+            "配置文件格式错误：顶层应为供应商列表（YAML list）"
+            "或包含 providers 键的字典。"
+        )
 
     providers: list[ProviderConfig] = []
     names: set[str] = set()
@@ -107,3 +117,27 @@ def load_providers(filepath: str) -> list[ProviderConfig]:
         raise ValueError("配置文件中没有有效的供应商配置。")
 
     return providers
+
+
+def load_app_settings(filepath: str) -> dict:
+    """从配置文件中加载应用级设置。
+
+    支持 max_concurrency 等非供应商配置项。如果配置文件
+    是纯列表格式（旧格式），返回空字典。
+
+    Args:
+        filepath: config.yaml 文件路径
+
+    Returns:
+        设置字典，如 {"max_concurrency": 3}
+    """
+    path = Path(filepath)
+    if not path.exists():
+        return {}
+
+    with open(path, encoding="utf-8") as f:
+        raw = yaml.safe_load(f)
+
+    if isinstance(raw, dict):
+        return raw.get("settings", {})
+    return {}
