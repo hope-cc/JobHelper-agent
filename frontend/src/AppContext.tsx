@@ -13,6 +13,8 @@ const initialState: AppState = {
   currentConversationId: null,
   messages: [],
   isStreaming: false,
+  batchDeleteMode: false,
+  selectedConvIds: new Set<string>(),
 };
 
 function reducer(state: AppState, action: AppAction): AppState {
@@ -123,6 +125,37 @@ function reducer(state: AppState, action: AppAction): AppState {
         msgsResult[msgsResult.length - 1] = { ...lastResult, toolCalls: tcs };
       }
       return { ...state, messages: msgsResult };
+    }
+
+    case "TOGGLE_BATCH_DELETE": {
+      const nextMode = !state.batchDeleteMode;
+      return {
+        ...state,
+        batchDeleteMode: nextMode,
+        selectedConvIds: nextMode ? state.selectedConvIds : new Set<string>(),
+      };
+    }
+
+    case "TOGGLE_SELECT_CONVERSATION": {
+      const newSet = new Set(state.selectedConvIds);
+      if (newSet.has(action.conversationId)) {
+        newSet.delete(action.conversationId);
+      } else {
+        newSet.add(action.conversationId);
+      }
+      return { ...state, selectedConvIds: newSet };
+    }
+
+    case "DELETE_CONVERSATIONS": {
+      const deleteSet = new Set(action.conversationIds);
+      return {
+        ...state,
+        conversations: state.conversations.filter((c) => !deleteSet.has(c.id)),
+        selectedConvIds: new Set<string>(),
+        ...(state.currentConversationId && deleteSet.has(state.currentConversationId)
+          ? { currentConversationId: null, messages: [] }
+          : {}),
+      };
     }
 
     default:

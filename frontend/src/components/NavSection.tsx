@@ -10,6 +10,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "new_chat", label: "新聊天", icon: "💬" },
   { key: "resume", label: "简历管理", icon: "📄" },
   { key: "progress", label: "投递进度", icon: "📊" },
+  { key: "profile", label: "个人信息管理", icon: "👤" },
 ];
 
 interface NavSectionProps {

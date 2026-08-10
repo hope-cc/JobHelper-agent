@@ -37,3 +37,9 @@ export async function sendMessage(
   if (!res.body) throw new Error("响应无 body");
   return res.body.getReader();
 }
+
+/** 删除指定会话。 */
+export async function deleteConversation(id: string): Promise<void> {
+  const res = await fetch(`${BASE}/conversations/${id}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(`删除会话失败: ${res.status}`);
+}

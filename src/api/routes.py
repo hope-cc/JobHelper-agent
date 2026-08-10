@@ -3,10 +3,11 @@
 import json
 
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel
 
 from src.api import storage
+from src.api.resume_routes import resume_router
 from src.api.sse import to_sse
 from src.chat.graph import build_graph, ChatState
 from src.llm.base import BaseLLMClient
@@ -15,6 +16,7 @@ from src.logger import api_request_done, api_request_error
 from src.tools.registry import ToolRegistry
 
 router = APIRouter(prefix="/api")
+router.include_router(resume_router)
 
 # LLM 客户端，由 main.py 在启动时注入
 _llm_client: BaseLLMClient | None = None
@@ -185,3 +187,10 @@ async def send_message(conversation_id: str, body: SendMessageBody):
             "X-Accel-Buffering": "no",
         },
     )
+
+
+@router.delete("/conversations/{conversation_id}")
+async def delete_conversation(conversation_id: str):
+    """删除指定会话。"""
+    storage.delete_conversation(conversation_id)
+    return Response(status_code=204)

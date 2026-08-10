@@ -78,3 +78,16 @@ def update_title(conversation_id: str, title: str) -> None:
     data = json.loads(fp.read_text(encoding="utf-8"))
     data["title"] = title
     fp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def delete_conversation(conversation_id: str) -> bool:
+    """删除指定会话的 JSON 文件。
+
+    文件不存在时返回 False（幂等，不抛异常）。
+    """
+    fp = _file_path(conversation_id)
+    try:
+        fp.unlink()
+        return True
+    except FileNotFoundError:
+        return False

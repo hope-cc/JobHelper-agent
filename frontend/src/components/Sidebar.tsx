@@ -1,4 +1,5 @@
 import type { ViewType, ConversationSummary } from "../types";
+import { useAppState, useAppDispatch } from "../AppContext";
 import NavSection from "./NavSection";
 import ConversationList from "./ConversationList";
 
@@ -8,6 +9,7 @@ interface SidebarProps {
   activeId: string | null;
   onNavigate: (view: ViewType) => void;
   onSelectConversation: (conv: ConversationSummary) => void;
+  onBatchDelete: () => void;
 }
 
 export default function Sidebar({
@@ -16,7 +18,19 @@ export default function Sidebar({
   activeId,
   onNavigate,
   onSelectConversation,
+  onBatchDelete,
 }: SidebarProps) {
+  const { batchDeleteMode, selectedConvIds } = useAppState();
+  const dispatch = useAppDispatch();
+
+  function handleToggleBatchDelete() {
+    dispatch({ type: "TOGGLE_BATCH_DELETE" });
+  }
+
+  function handleToggleSelect(id: string) {
+    dispatch({ type: "TOGGLE_SELECT_CONVERSATION", conversationId: id });
+  }
+
   return (
     <aside className="w-1/7 min-w-[200px] max-w-[280px] h-screen flex flex-col bg-gray-50 border-r border-gray-200">
       {/* 功能导航区 */}
@@ -32,13 +46,15 @@ export default function Sidebar({
 
       {/* 会话历史区 */}
       <div className="flex-1 flex flex-col min-h-0 p-3">
-        <p className="text-xs text-gray-400 font-medium px-2 mb-2 uppercase tracking-wider">
-          聊天记录
-        </p>
         <ConversationList
           conversations={conversations}
           activeId={activeId}
           onSelect={onSelectConversation}
+          batchDeleteMode={batchDeleteMode}
+          selectedIds={selectedConvIds}
+          onToggleSelect={handleToggleSelect}
+          onDelete={onBatchDelete}
+          onToggleBatchDelete={handleToggleBatchDelete}
         />
       </div>
     </aside>
