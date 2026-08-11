@@ -10,6 +10,7 @@ from src.api import storage
 from src.api.profile_routes import profile_router
 from src.api.resume_routes import resume_router
 from src.api.sse import to_sse
+from src.browser.context import set_current_conversation
 from src.chat.graph import build_graph, ChatState
 from src.llm.base import BaseLLMClient
 from src.llm.types import Message, TextChunk, ToolResultEvent, ToolCallStartChunk
@@ -137,6 +138,9 @@ async def send_message(conversation_id: str, body: SendMessageBody):
     graph = build_graph(client, registry)
 
     async def event_generator():
+        # 在生成器体内设置会话ID，保证与图执行处于同一异步上下文
+        set_current_conversation(conversation_id)
+
         full_response: list[str] = []
         tool_call_count = 0
 
