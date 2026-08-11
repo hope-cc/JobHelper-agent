@@ -91,7 +91,7 @@ def tool(*, name: str, description: str) -> Callable:
         if not inspect.iscoroutinefunction(fn):
             raise TypeError(
                 f"@tool 装饰的函数必须是 async 函数，"
-                f"但 {fn.__name__} 不是 async 函数"
+                f"但 {fn .__name__} 不是 async 函数"
             )
 
         hints = get_type_hints(fn)

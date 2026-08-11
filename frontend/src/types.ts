@@ -147,3 +147,107 @@ export type ResumeAction =
   | { type: "SELECT_BLOCK"; blockId: string }
   | { type: "SELECT_CONNECTION"; connectionId: string }
   | { type: "CLEAR_SELECTION" };
+
+// ========== 个人信息管理相关类型 ==========
+
+/** 基本信息（个人证件为类型 + 号码 + 有效期三字段） */
+export interface BasicInfo {
+  name: string;
+  phone: string;
+  email: string;
+  gender: string;
+  age: string;
+  location: string;
+  id_type: string;
+  id_number: string;
+  id_valid_until: string;
+  hometown: string;
+}
+
+/** 教育经历单条记录（id 仅前端使用，保存时剥离） */
+export interface EducationEntry {
+  id: string;
+  start_time: string;
+  end_time: string;
+  school: string;
+  degree: string;
+  degree_type: string;
+  major: string;
+}
+
+/** 实习经历单条记录 */
+export interface InternshipEntry {
+  id: string;
+  start_time: string;
+  end_time: string;
+  company: string;
+  position: string;
+  description: string;
+}
+
+/** 项目经历单条记录 */
+export interface ProjectEntry {
+  id: string;
+  start_time: string;
+  end_time: string;
+  name: string;
+  role: string;
+  link: string;
+  description: string;
+}
+
+/** 奖项单条记录 */
+export interface AwardEntry {
+  id: string;
+  time: string;
+  name: string;
+  description: string;
+}
+
+/** 语言能力单条记录 */
+export interface LanguageEntry {
+  id: string;
+  language: string;
+  proficiency: string;
+}
+
+/** 经历类分区的键 */
+export type ProfileSectionKey =
+  | "education"
+  | "internship"
+  | "project"
+  | "award"
+  | "language";
+
+/** 各分区单条记录的联合类型 */
+export type ProfileEntry =
+  | EducationEntry
+  | InternshipEntry
+  | ProjectEntry
+  | AwardEntry
+  | LanguageEntry;
+
+/** 整份个人信息字典（前端表单状态，条目含局部 id） */
+export interface PersonalProfile {
+  basic_info: BasicInfo;
+  education: EducationEntry[];
+  internship: InternshipEntry[];
+  project: ProjectEntry[];
+  award: AwardEntry[];
+  language: LanguageEntry[];
+  self_evaluation: string;
+  /** 已勾选「脱敏」的基本信息字段键（agent 读取时该字段值以 *** 替换） */
+  masked_basic_fields: string[];
+}
+
+/** 持久化 / 传给后端的字典结构（不含前端条目 id），与 data/personal/profile.json 一致 */
+export type SavableProfile = {
+  basic_info: BasicInfo;
+  education: Omit<EducationEntry, "id">[];
+  internship: Omit<InternshipEntry, "id">[];
+  project: Omit<ProjectEntry, "id">[];
+  award: Omit<AwardEntry, "id">[];
+  language: Omit<LanguageEntry, "id">[];
+  self_evaluation: string;
+  masked_basic_fields: string[];
+};

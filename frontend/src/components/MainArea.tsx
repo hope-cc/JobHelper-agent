@@ -3,6 +3,7 @@ import WelcomeScreen from "./WelcomeScreen";
 import ChatView from "./ChatView";
 import ResumePage from "./ResumePage";
 import PlaceholderPage from "./PlaceholderPage";
+import ProfilePage from "./ProfilePage";
 
 export default function MainArea() {
   const { view } = useAppState();
@@ -35,7 +36,7 @@ export default function MainArea() {
     case "profile":
       return (
         <main className="flex-1 h-full">
-          <PlaceholderPage title="个人信息管理" />
+          <ProfilePage />
         </main>
       );
     default:

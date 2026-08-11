@@ -5,7 +5,7 @@ import {
   type Dispatch,
   type ReactNode,
 } from "react";
-import type { ResumeState, ResumeAction, Block, Connection } from "../types";
+import type { ResumeState, ResumeAction } from "../types";
 
 const initialState: ResumeState = {
   resumes: [],

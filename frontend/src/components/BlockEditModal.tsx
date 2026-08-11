@@ -35,13 +35,7 @@ function escapeHtml(text: string): string {
  * 只保留 <b>/<strong> 作为加粗标记，忽略其他标签。
  */
 function htmlToSpans(html: string): TextSpan[] {
-  // 移除 <br> 和块级标签，替换为换行符
-  let text = html
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/(div|p|li|h[1-6])>/gi, "\n")
-    .replace(/<[^>]+>/g, ""); // 这一步会丢掉加粗信息
-
-  // 用更精细的方式：遍历 DOM
+  // 用更精细的方式：遍历 DOM（先移除 <br> 和块级标签，替换为换行符）
   const div = document.createElement("div");
   div.innerHTML = html;
   return extractSpans(div);

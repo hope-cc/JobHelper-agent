@@ -7,6 +7,7 @@ from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel
 
 from src.api import storage
+from src.api.profile_routes import profile_router
 from src.api.resume_routes import resume_router
 from src.api.sse import to_sse
 from src.chat.graph import build_graph, ChatState
@@ -16,6 +17,7 @@ from src.logger import api_request_done, api_request_error
 from src.tools.registry import ToolRegistry
 
 router = APIRouter(prefix="/api")
+router.include_router(profile_router)
 router.include_router(resume_router)
 
 # LLM 客户端，由 main.py 在启动时注入

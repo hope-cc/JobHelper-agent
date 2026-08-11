@@ -201,7 +201,8 @@ def build_graph(client: BaseLLMClient, registry: ToolRegistry) -> StateGraph:
 
     graph = StateGraph(ChatState)
 
-    # chat_node —— 闭包绑定 client 和 tool_defs
+    # chat_node —— 闭包绑定 client 和 tool_defs，
+    # langgraph框架只会传入state和config，client和tool_defs是外部业务参数只能通过包装函数闭包传入
     async def _chat_node(state: ChatState, config: RunnableConfig) -> dict:
         return await chat_node(
             state, config, client=client, tool_defs=tool_defs,

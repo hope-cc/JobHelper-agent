@@ -5,7 +5,7 @@ import ResumeTopBar from "./ResumeTopBar";
 import ResumeEditor from "./ResumeEditor";
 
 function ResumePageInner() {
-  const { resumes } = useResumeState();
+  const { resumes: _resumes } = useResumeState();
   const dispatch = useResumeDispatch();
 
   useEffect(() => {
