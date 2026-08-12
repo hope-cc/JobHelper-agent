@@ -2,3 +2,4 @@ anthropic
 openai
 langgraph
 pyyaml
+mcp

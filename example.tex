@@ -1,0 +1,135 @@
+\documentclass[10pt, a4paper]{ctexart}
+
+% 设置页面边距
+\usepackage[left=1.5cm, right=1.5cm, top=1.5cm, bottom=1.5cm]{geometry}
+% 用于插入图片
+\usepackage{graphicx}
+% 用于自定义列表间距
+\usepackage{enumitem}
+% 用于自定义颜色（打码块）
+\usepackage{xcolor}
+% 用于技能部分的表格排版
+\usepackage{tabularx}
+\usepackage[hidelinks]{hyperref}
+% 禁用页码
+\pagestyle{empty}
+% 取消段首缩进
+\setlength{\parindent}{0pt}
+
+% ==================== 自定义宏命令 ====================
+% 自定义模块标题命令 (带有下划线)
+\newcommand{\cvsection}[1]{
+    \vspace{2ex}
+    {\large\bfseries #1}
+    \vspace{0.5ex}
+    \hrule height 1pt
+    \vspace{1.5ex}
+}
+
+% 自定义项目标题行 (左侧加粗，右侧时间)
+\newcommand{\cvitemheader}[2]{
+    {\bfseries #1} \hfill #2 \par
+    \vspace{0.5ex}
+}
+
+% 自定义项目副标题行 (左侧普通文本，右侧地点)
+\newcommand{\cvsubitem}[2]{
+    {#1} \hfill #2 \par
+    \vspace{0.5ex}
+}
+
+\begin{document}
+
+% ==================== 头部个人信息 ====================
+\begin{center}
+    {\huge \bfseries 廖梓希} \\[1.5ex]
+    % 2x2 布局的联系方式，l 表示左对齐
+    \begin{tabular}{@{\hspace{0pt}}l @{\quad | \quad} l @{\quad | \quad} l}
+    手机号：18928733892 & 邮箱：cc1070999230@163.com & 现居地：广州 
+\end{tabular}
+\end{center}
+
+
+% 头像绝对位置微调：向上移动并靠右对齐
+\vspace{-4cm}
+\hfill 
+% 请将下方这行取消注释，并将 avatar.jpg 替换为你的证件照文件名
+\raisebox{-\height}{\includegraphics[width=2.5cm,height=3.5cm]{img.jpg}}
+% 这是一个照片的占位框，换上真实照片后请删除这行：
+% \raisebox{-\height}{\fcolorbox{black}{lightgray}{\makebox[2.2cm]{\rule{0pt}{3.2cm}\textcolor{black}{照片位置}}}}
+
+% ==================== 教育经历 ====================
+\cvsection{\textcolor[HTML]{365F91}{教育经历}}
+\noindent \textbf{广东工业大学} \quad 本科 \quad 自动化学院 \quad 自动化类 \hfill 2020.09 -- 2024.06 
+\begin{itemize}[leftmargin=1.5em, itemsep=0pt, parsep=0pt, topsep=0ex]
+    \item GPA: 3.8/5.0 (前10\%)
+    \item 数学建模竞赛省赛一等奖，数学竞赛(非数学类)省赛一等奖，两次获得校学业奖学金
+\end{itemize}
+\vspace{5pt}
+\noindent \textbf{广东工业大学} \quad 硕士 \quad 自动化学院\quad 控制科学与工程 \hfill 2024.09 -- 2027.06 
+\begin{itemize}[leftmargin=1.5em, itemsep=0pt, parsep=0pt, topsep=0ex]
+    \item GPA: 4.1/5.0 (前10\%)
+    \item 专利授权两项，SCI一区论文在投一篇，校级一等学业奖学金
+\end{itemize}
+
+
+
+% ==================== 项目经历 ====================
+\cvsection{\textcolor[HTML]{365F91}{项目经历 }}
+\cvitemheader{研究生课题：基于强化学习的无信号灯交叉口车辆协同控制系统}{2025年06月 - 2026年04月}
+\textbf{项目目标：}在无信号灯交叉口仿真环境中，使用强化学习算法为所有车辆规划无车道约束轨迹，消解车辆冲突，确保高效和安全行驶。
+\begin{itemize}[leftmargin=1.5em, itemsep=0pt, parsep=0pt, topsep=0.5ex]
+    \item \textbf{核心算法设计}：设计多智能体 PPO 强化学习框架，为车辆端到端决策速度与转向角；引入注意力机制优化决策网络，解决动态交通流下状态维度不固定的输入适配问题，提升复杂场景泛化能力。
+    \item \textbf{多进程训练}： 基于Python Multiprocessing 设计并行训练框架，采用多子进程并行执行环境推演，构建主从进程间的高效数据传输通道，缓解计算密集型瓶颈，使训练提速近3倍。
+    \item \textbf{环境感知与数据处理}：设计点云处理流水线，通过聚类、L-Shape 拟合与卡尔曼滤波算法提取车辆世界坐标及航向角，为强化学习模型提供精准邻车观测输入，降低感知噪声对决策的影响。
+     \item \textbf{分布式集成}：基于 ROS2 构建 CARLA 与 SUMO 联合仿真的分布式通信架构，通过话题通信实现多车观测数据实时分发，结合异步回调机制完成模型推理与动作下发，保障系统实时性与通信可靠性。
+\end{itemize}
+
+\vspace{6pt}
+
+
+% \end{itemize}
+\vspace{5pt}
+
+
+
+\cvitemheader{个人项目：xixiCode——终端Coding Agent}{2026年06月 - 2026年07月}
+\textbf{项目目标：}轻量级终端 Coding Agent，基于ReAct与Plan Mode双模式驱动LLM自主完成编程任务。交互、引擎、工具、记忆、安全五层分层架构，支持Anthropic、OpenAI双协议、MCP工具扩展、本地部署模型辅助简单任务。
+
+\textbf{技术栈：} Python, React, Ollama,  
+\begin{itemize}[leftmargin=1.5em, itemsep=0pt, parsep=0pt, topsep=0.5ex]
+    \item \textbf{LLM API适配}：统一Anthropic、OpenAI两套不同的流式响应协议为同一套事件接口，新增LLM供应商只需要适配一个接口。
+    \item \textbf{安全系统}：设计危险命令拦截、路径沙箱、规则引擎、权限模式、人工确认的五层权限拦截模型，任一层拒绝即终止操作。
+    \item \textbf{MCP工具延迟加载:} MCP工具注册时只传名称不传完整工具描述，LLM按需发现后再加载完整定义，百级工具场景下工具描述Token占用减少80\%，避免上下文窗口挤占。
+    \item \textbf{边缘分流}：本地部署Qwen2.5-coder-7B作为轻量边缘节点，专门承接代码语法解释任务，单次对话平均节省主LLM模型20,000 token。
+     
+\end{itemize}
+
+% ==================== 专业技能 ====================
+\cvsection{\textcolor[HTML]{365F91}{实习经历}}
+\textbf{工信部电子五所} \quad \quad 软件测试实习生  \quad \quad \textbf{南方电网管理平台} \hfill 2026.05 -- 2026.06
+
+\textbf{项目背景:}该平台旨在构建南方电网全网基建工程信息总览与重点工程监控，通过对基建项目执行全过程及运营状况的监测预警、纠偏反馈，全面提升公司基建全过程管控能力与决策效率。
+
+\textbf{主要职责:}
+
+\begin{itemize}[leftmargin=1.5em, itemsep=0pt, parsep=0pt, topsep=0.5ex]
+\item \textbf{测试用例Agent：}本地部署轻量LLM模型自动化解析需求文档，设计示教模式进行prompt示例优化，设计自动模式提取系统功能模块与业务要点，完成2000+条测试用例全自动生成；将原本5天的纯人工处理流程压缩至1天，大幅提升测试准备阶段工作效率。
+\item \textbf{测试落地执行：}协同产品、开发团队统筹首轮功能测试、回归测试与性能测试全流程，输出完整测试复盘报告，严格把控版本上线交付质量。
+\end{itemize}
+
+% ==================== 专业技能 ====================
+\cvsection{\textcolor[HTML]{365F91}{专业技能 }}
+\begin{itemize}[leftmargin=1.5em, itemsep=0pt, parsep=0pt, topsep=0ex]
+    \item 熟悉 Python 编程，掌握 Numpy、PyTorch等常用库。 
+    \item 熟悉 C++，包括面向对象、STL、cmake等。
+    \item 熟悉 Git 常用工作流，具备分支管理与版本迭代管理能力。
+    \item 熟悉 Claude Code 等 AI 辅助开发工具，提升代码编写与调试效率。
+\end{itemize}
+
+
+\vspace{0.5em} % 与下一个项目或章节保持一致的间距
+
+
+
+\end{document}

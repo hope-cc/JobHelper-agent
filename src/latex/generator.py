@@ -1,8 +1,10 @@
 """LaTeX 代码生成器。
 
-将简历 JSON 数据（blocks + connections）转换为完整的 LaTeX 源码。
+将简历 JSON 数据（blocks + connections）转换为完整的 LaTeX 源码，
+排版风格与 example.tex 保持一致（ctexart、cvsection、统一布局）。
 """
 
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -36,6 +38,8 @@ class SectionGroup:
     category: str
     blocks: list[dict] = field(default_factory=list)
 
+
+# ---- 排序与分组（沿用现有逻辑） ----
 
 def _sort_blocks(blocks: list[dict], connections: list[dict]) -> list[dict]:
     """按连线链遍历排序，返回有序 block 列表。
@@ -117,210 +121,305 @@ def _group_sections(sorted_blocks: list[dict]) -> list[SectionGroup]:
     return groups
 
 
+# ---- LaTeX 转义 ----
+
+_ESCAPE_TABLE = {
+    "\\": r"\textbackslash{}",
+    "&": r"\&",
+    "%": r"\%",
+    "$": r"\$",
+    "#": r"\#",
+    "_": r"\_",
+    "{": r"\{",
+    "}": r"\}",
+    "~": r"\textasciitilde{}",
+    "^": r"\^{}",
+}
+
+_ESCAPE_RE = re.compile(r"[\\&%$#_{}~^]")
+
+
 def _escape_latex(text: str) -> str:
-    """转义 LaTeX 特殊字符。"""
-    replacements = {
-        "&": r"\&",
-        "%": r"\%",
-        "$": r"\$",
-        "#": r"\#",
-        "_": r"\_",
-        "{": r"\{",
-        "}": r"\}",
-        "~": r"\textasciitilde{}",
-        "^": r"\^{}",
-        "\\": r"\textbackslash{}",
-    }
-    for ch, repl in replacements.items():
-        text = text.replace(ch, repl)
-    return text
+    """转义 LaTeX 特殊字符（单遍替换，避免替换结果被二次转义）。"""
+    return _ESCAPE_RE.sub(lambda m: _ESCAPE_TABLE[m.group()], text)
 
 
-def _spans_to_latex(spans: list[dict], bullet_points: bool) -> str:
-    """将 TextSpan 列表转换为 LaTeX 行内文本。
+# ---- 导言区与常量 ----
 
-    加粗 → \\textbf{...}
-    换行 → \\\\
-    圆点列表 → itemize 环境
+_ITEMIZE_OPTS = "leftmargin=1.5em, itemsep=0pt, parsep=0pt, topsep=0ex"
+
+_PREAMBLE = r"""\documentclass[10pt, a4paper]{ctexart}
+
+% 设置页面边距
+\usepackage[left=1.5cm, right=1.5cm, top=1.5cm, bottom=1.5cm]{geometry}
+% 用于插入图片
+\usepackage{graphicx}
+% 用于自定义列表间距
+\usepackage{enumitem}
+% 用于自定义颜色（打码块）
+\usepackage{xcolor}
+% 用于技能部分的表格排版
+\usepackage{tabularx}
+\usepackage[hidelinks]{hyperref}
+% 禁用页码
+\pagestyle{empty}
+% 取消段首缩进
+\setlength{\parindent}{0pt}
+
+% ==================== 自定义宏命令 ====================
+% 自定义模块标题命令 (带有下划线)
+\newcommand{\cvsection}[1]{
+    \vspace{2ex}
+    {\large\bfseries #1}
+    \vspace{0.5ex}
+    \hrule height 1pt
+    \vspace{1.5ex}
+}
+
+% 自定义项目标题行 (左侧加粗，右侧时间)
+\newcommand{\cvitemheader}[2]{
+    {\bfseries #1} \hfill #2 \par
+    \vspace{0.5ex}
+}
+
+% 自定义项目副标题行 (左侧普通文本，右侧地点)
+\newcommand{\cvsubitem}[2]{
+    {#1} \hfill #2 \par
+    \vspace{0.5ex}
+}"""
+
+
+# ---- 时间归一化 ----
+
+def _normalize_time(ts: str) -> str:
+    """将日期区间分隔符规范化为 LaTeX 的 en-dash（--）。"""
+    return re.sub(r"(?<=\d)\s*[–-]\s*(?=\d)", " -- ", ts)
+
+
+# ---- 行构建与分块 ----
+
+def _build_lines_with_bold(spans: list[dict]) -> list[str]:
+    """逐 span 构建带加粗标记的行。
+
+    span 文本转义后若 bold 则包 \\textbf{}，按 \\n 拆行。
+    返回 strip 后的非空行列表，但保留恰好为 "•" 的行。
     """
-    if not spans:
-        return ""
-
-    # 先拼接为纯文本 + 加粗标记
-    parts: list[str] = []
+    lines: list[str] = [""]
     for s in spans:
         text = _escape_latex(s.get("text", ""))
-        if s.get("bold"):
-            parts.append(r"\textbf{" + text + "}")
+        parts = text.split("\n")
+        for i, part in enumerate(parts):
+            if i > 0:
+                lines.append("")
+            if part:
+                if s.get("bold"):
+                    lines[-1] += r"\textbf{" + part + "}"
+                else:
+                    lines[-1] += part
+
+    result: list[str] = []
+    for ln in lines:
+        stripped = ln.strip()
+        if not stripped:
+            continue
+        if stripped == "•":
+            result.append("•")
         else:
-            parts.append(text)
+            result.append(stripped)
+    return result
 
-    latex = "".join(parts)
 
-    # 处理换行：\\n → latex 换行
-    lines = latex.split("\n")
-    lines = [l.strip() for l in lines if l.strip()]
+def _build_paragraphs(head_lines: list[str]) -> list[str]:
+    """将标题之后的若干行聚合为段落列表。
 
-    if not lines:
+    以「行首为 \\textbf{」作为新段落起点；普通行视为上一段落的续行（空格连接），
+    从而把段落内部的软换行（\\n）合并回同一段落。
+    """
+    paragraphs: list[str] = []
+    current: str | None = None
+    for ln in head_lines:
+        if current is None or ln.startswith(r"\textbf{"):
+            if current is not None:
+                paragraphs.append(current)
+            current = ln
+        else:
+            current += " " + ln
+    if current is not None:
+        paragraphs.append(current)
+    return paragraphs
+
+
+def _partition_block(lines: list[str]) -> tuple[list[str], list[str]]:
+    """将行划分为 (非列表区, 列表项列表)。
+
+    「行首为 •」为列表边界；首个 • 行之前为非列表区；
+    每个 • 行起至下一个 • 行之间的内容合并为一个列表项（内部行用空格连接）。
+    """
+    head: list[str] = []
+    bullets: list[str] = []
+    current: list[str] = []
+    in_bullets = False
+
+    for ln in lines:
+        if ln.startswith("•"):
+            if current:
+                bullets.append(" ".join(current).strip())
+            in_bullets = True
+            rest = ln[1:].strip()
+            current = [rest] if rest else []
+        elif in_bullets:
+            current.append(ln)
+        else:
+            head.append(ln)
+
+    if current:
+        bullets.append(" ".join(current).strip())
+
+    return head, bullets
+
+
+# ---- 照片解析 ----
+
+def _resolve_photo_path(resume_id: str = "", photo_url: str = "") -> str:
+    """解析简历照片的本地绝对路径。
+
+    优先按 resume_id 在 data/CV 下直接查找照片文件（{id}_photo.*），
+    找不到时再尝试从 photoUrl（/api/resumes/{id}/photo）提取 id 查找。
+    """
+    def _glob(rid: str) -> str:
+        for p in DATA_DIR.glob(f"{rid}_photo.*"):
+            return str(p.resolve()).replace("\\", "/")
         return ""
 
-    if bullet_points:
-        # 整体包装为 itemize 环境
-        items = "\n".join(f"  \\item {line}" for line in lines)
-        return "\\begin{itemize}\n" + items + "\n\\end{itemize}"
-    else:
-        # 用 \\ 连接各行
-        return " \\\\\n".join(lines)
+    # resume_id 可能是空或含 glob 特殊字符的测试数据，先做白名单校验
+    if resume_id and re.fullmatch(r"[A-Za-z0-9-]+", resume_id):
+        found = _glob(resume_id)
+        if found:
+            return found
+
+    if photo_url:
+        m = re.search(r"/resumes/(.+?)/photo", photo_url)
+        rid = m.group(1) if m else None
+        if rid:
+            found = _glob(rid)
+            if found:
+                return found
+
+    return ""
 
 
-def _render_preamble() -> str:
-    """返回 LaTeX 导言区。"""
-    return r"""\documentclass[11pt,a4paper]{article}
+# ---- 区块渲染 ----
 
-% ---- 中文支持 ----
-\usepackage[UTF8]{ctex}
+def _render_personal_info(block: dict, resume_id: str = "") -> str:
+    """渲染头部：居中姓名 + tabular 联系方式 + 右上角照片。
 
-% ---- 页面边距 ----
-\usepackage[margin=2cm]{geometry}
-
-% ---- 颜色 ----
-\usepackage[table,dvipsnames]{xcolor}
-\definecolor{sectioncolor}{HTML}{365F91}
-
-% ---- 图片 ----
-\usepackage{graphicx}
-
-% ---- 标题格式 ----
-\usepackage{titlesec}
-\titleformat{\section}
-  {\Large\bfseries\color{sectioncolor}}
-  {}{0em}{}[\titlerule]
-
-% ---- 列表格式 ----
-\usepackage{enumitem}
-\setlist{nosep,leftmargin=*}
-
-% ---- 宏定义 ----
-\newcommand{\cvitemheader}[2]{%
-  \makebox[0.68\textwidth][l]{\textbf{#1}}%
-  \makebox[0.32\textwidth][r]{\small\textit{#2}}%
-}
-"""
-
-
-def _render_personal_info(block: dict) -> str:
-    """渲染个人信息区：姓名居中加粗 + 联系方式居中 + 照片右侧。"""
+    照片位置参照 example.tex：置于个人信息栏最右侧，用负间距上移到姓名区右侧。
+    """
     info = _get_field(block, "personalInfo", "personal_info", default={})
     name = _escape_latex(_personal_field(info, "name", default="未填写"))
     phone = _escape_latex(_personal_field(info, "phone", default=""))
     email = _escape_latex(_personal_field(info, "email", default=""))
     location = _escape_latex(_personal_field(info, "location", default=""))
-    photo_path = _personal_field(info, "photoUrl", "photo_url", default="")
+    photo_url = _personal_field(info, "photoUrl", "photo_url", default="")
 
-    # 联系方式行
-    contact_parts = []
+    fields = []
     if phone:
-        contact_parts.append(phone)
+        fields.append(("手机号：", phone))
     if email:
-        contact_parts.append(email)
+        fields.append(("邮箱：", email))
     if location:
-        contact_parts.append(location)
-    contact_str = r" $|$ ".join(contact_parts)
+        fields.append(("现居地：", location))
 
-    # 照片路径转绝对路径
-    photo_abs = ""
-    if photo_path:
-        # photo_url 是 /api/resumes/{id}/photo 格式，需要转为本地文件路径
-        import re
-        m = re.search(r"/resumes/(.+?)/photo", photo_path)
-        if m:
-            rid = m.group(1)
-            for p in DATA_DIR.glob(f"{rid}_photo.*"):
-                photo_abs = str(p.resolve()).replace("\\", "/")
-                break
+    lines = [r"\begin{center}"]
+    lines.append(r"{\huge \bfseries " + name + r"} \\[1.5ex]")
+    if fields:
+        # 分隔符用 \textbar 而非字面 |：pdflatex(OT1) 下 | 会渲染成 em-dash
+        cols = r"@{\hspace{0pt}}l" + r" @{\quad \textbar \quad} l" * (len(fields) - 1)
+        lines.append(r"\begin{tabular}{" + cols + "}")
+        lines.append("    " + " & ".join(label + val for label, val in fields))
+        lines.append(r"\end{tabular}")
+    lines.append(r"\end{center}")
 
-    lines = []
-
+    photo_abs = _resolve_photo_path(resume_id, photo_url)
     if photo_abs:
-        # 左右布局：左侧个人信息，右侧照片
-        lines.append(r"\begin{minipage}[t]{0.68\textwidth}")
-        lines.append(r"\begin{center}")
-        lines.append(r"{\Huge\bfseries " + name + r"\par}")
-        lines.append(r"\vspace{0.4cm}")
-        if contact_str:
-            lines.append(r"{\normalsize " + contact_str + r"\par}")
-        lines.append(r"\end{center}")
-        lines.append(r"\end{minipage}")
+        lines.append("")
+        lines.append(r"\vspace{-4cm}")
         lines.append(r"\hfill")
-        lines.append(r"\begin{minipage}[t]{0.28\textwidth}")
-        lines.append(r"\flushright")
-        lines.append(r"\includegraphics[width=3cm,height=3.5cm,keepaspectratio]{" + photo_abs + "}")
-        lines.append(r"\end{minipage}")
-    else:
-        lines.append(r"\begin{center}")
-        lines.append(r"{\Huge\bfseries " + name + r"\par}")
-        lines.append(r"\vspace{0.4cm}")
-        if contact_str:
-            lines.append(r"{\normalsize " + contact_str + r"\par}")
-        lines.append(r"\end{center}")
+        lines.append(
+            r"\raisebox{-\height}{\includegraphics[width=2.5cm,height=3.5cm]{"
+            + photo_abs
+            + r"}}"
+        )
 
-    lines.append(r"\vspace{0.5cm}")
     return "\n".join(lines)
 
 
 def _render_content_block(block: dict) -> str:
-    """渲染单个正文块。"""
+    """渲染单个正文块：标题行 + 段落 + 列表（统一布局）。
+
+    - 标题行 = 非列表区第一行，保留 spans 加粗，时间 \\hfill 右对齐
+    - 段落 = 非列表区其余行
+    - 列表 = 所有 • 列表项，单个 itemize 环境
+    """
     content = _get_field(block, "content", default={})
     spans = _content_field(content, "spans", default=[])
     time_span = _content_field(content, "timeSpan", "time_span", default="")
-    bullet_points = _content_field(content, "bulletPoints", "bullet_points", default=False)
 
     if not spans:
-        return r"\vspace{5pt}" + "\n"
+        return ""
 
-    body_latex = _spans_to_latex(spans, bullet_points)
-    if not body_latex:
-        return r"\vspace{5pt}" + "\n"
+    lines = _build_lines_with_bold(spans)
+    if not lines:
+        return ""
 
-    lines = body_latex.strip().split("\n")
+    head, bullets = _partition_block(lines)
+    title = head[0] if head else None
+    paragraphs = _build_paragraphs(head[1:])
 
-    if time_span:
-        # 第一行用 \cvitemheader，其余行紧跟
-        first_line = lines[0].strip().rstrip("\\\\").strip()
-        # 如果第一行是 \begin{itemize}（即整个块被包在 itemize 里）
-        if first_line.startswith("\\begin{itemize}"):
-            # itemize 模式下做不了 cvitemheader，直接把时间跨度放在前面
-            time_str = _escape_latex(time_span)
-            result = [r"\cvitemheader{" + time_str + r"}{}"]
-            result.append(r"\vspace{3pt}")
-            result.append(body_latex.strip())
-            return "\n".join(result) + "\n"
+    parts: list[str] = []
 
-        rest_lines = lines[1:]
-        time_str = _escape_latex(time_span)
-        result = [r"\cvitemheader{" + first_line + r"}{" + time_str + r"}"]
-        if rest_lines:
-            result.append("\n".join(rest_lines))
-        return "\n".join(result) + "\n"
-    else:
-        return body_latex.strip() + "\n"
+    if title:
+        time_str = _escape_latex(_normalize_time(time_span)) if time_span else ""
+        if time_str:
+            parts.append(r"\noindent " + title + r" \hfill " + time_str + r"\par")
+        else:
+            parts.append(r"\noindent " + title + r"\par")
+        if paragraphs:
+            parts.append(r"\vspace{0.5ex}")
+
+    for p in paragraphs:
+        parts.append(r"\noindent " + p + r"\par")
+
+    if bullets:
+        parts.append(r"\begin{itemize}[" + _ITEMIZE_OPTS + "]")
+        parts.extend(r"  \item " + b for b in bullets)
+        parts.append(r"\end{itemize}")
+
+    return "\n".join(parts) + "\n"
 
 
 def _render_section(group: SectionGroup) -> str:
-    """渲染一个 section 组：标题 + 多个正文块。"""
+    """渲染一个 section 组：cvsection 标题 + 多个正文块。"""
     cat = _escape_latex(group.category)
-    lines = [r"\section{" + cat + r"}", ""]
+    lines = [r"\cvsection{\textcolor[HTML]{365F91}{" + cat + r"}}", ""]
 
-    for i, b in enumerate(group.blocks):
-        if i > 0:
+    rendered = 0
+    for b in group.blocks:
+        block_latex = _render_content_block(b)
+        if not block_latex:
+            continue
+        if rendered > 0:
             lines.append(r"\vspace{5pt}")
-        lines.append(_render_content_block(b))
+        lines.append(block_latex.strip())
+        rendered += 1
 
     return "\n".join(lines)
 
 
+# ---- 主入口 ----
+
 def generate_latex(resume_data: dict) -> str:
-    """主入口：将简历数据转换为完整 LaTeX 源码。
+    """主入口：将简历数据转换为与 example.tex 风格一致的 LaTeX 源码。
 
     Args:
         resume_data: 包含 blocks 和 connections 的简历 JSON dict
@@ -345,23 +444,15 @@ def generate_latex(resume_data: dict) -> str:
     sections = _group_sections(sorted_blocks)
 
     # 4. 组装 LaTeX
-    parts: list[str] = []
-
-    # 导言区
-    parts.append(_render_preamble())
-
-    # 文档开始
+    parts: list[str] = [_PREAMBLE]
     parts.append(r"\begin{document}")
 
-    # 个人信息
     if personal_block:
-        parts.append(_render_personal_info(personal_block))
+        parts.append(_render_personal_info(personal_block, resume_data.get("id", "")))
 
-    # 正文 sections
     for sec in sections:
         parts.append(_render_section(sec))
 
-    # 文档结束
     parts.append(r"\end{document}")
 
     return "\n\n".join(parts)

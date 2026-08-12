@@ -34,6 +34,13 @@ if not _logger.handlers:
     handler.setFormatter(logging.Formatter(LOG_FMT, datefmt=DATE_FMT))
     _logger.addHandler(handler)
 
+# 让所有 src.* 模块日志（browser_mcp 的 manager/llm_fill/upload/client 等）
+# 也写入 app.log，否则这些 logger 无 handler、日志会被静默丢弃。
+_src_logger = logging.getLogger("src")
+_src_logger.setLevel(logging.DEBUG)
+_src_logger.addHandler(handler)
+_src_logger.propagate = False
+
 
 # ---- 便捷函数 ----
 

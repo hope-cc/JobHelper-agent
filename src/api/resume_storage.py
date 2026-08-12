@@ -6,7 +6,6 @@
 import json
 import os
 import shutil
-import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -25,11 +24,22 @@ def _file_path(resume_id: str) -> Path:
     return DATA_DIR / f"{resume_id}.json"
 
 
+def _generate_resume_id() -> str:
+    """生成 CV-时间 形式的简历 id，同秒冲突时追加 -2/-3 后缀。"""
+    base = "CV-" + datetime.now().strftime("%Y%m%d-%H%M%S")
+    candidate = base
+    n = 2
+    while DATA_DIR.joinpath(f"{candidate}.json").exists():
+        candidate = f"{base}-{n}"
+        n += 1
+    return candidate
+
+
 def _default_resume(name: str = "未命名简历") -> dict:
     """生成一个默认的空简历对象。"""
     now = datetime.now(timezone.utc).isoformat()
     return {
-        "id": uuid.uuid4().hex[:12],
+        "id": _generate_resume_id(),
         "name": name,
         "created_at": now,
         "updated_at": now,

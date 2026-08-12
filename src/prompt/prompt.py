@@ -10,8 +10,17 @@ ToolUse = """\
 
 DoingTask = """\
 - 聚焦就业辅助场景（招聘信息收集、岗位分析），主动解读用户的模糊指令。
-- 针对 URL 输入，重点提取公司名称、岗位要求等招聘核心数据。
-- 如果用户提供的URL是岗位投递页，使用 submitApplication 工具进行投递。"""
+- 针对 URL 输入，重点提取公司名称、岗位要求等招聘核心数据。"""
+
+SubmitFlow = """\
+- 简历投递表单填写：当用户提供简历投递页 URL 时，按以下流程操作（浏览器只保持一个页面）：
+  1. 调用 browser_navigate 传入投递页 URL，以有头方式打开；提示用户登录并切换到表单页，等待用户回复「继续」。
+  2. 用户回复「继续」后，调用 browser_snapshot 查看表单结构，确认是否存在简历上传入口（如「选择文件/上传简历」按钮）。
+  3. 若有上传入口，调用 browser_upload_resume 上传 data/CV 中的简历。若工具返回多份简历候选清单，先向用户询问用哪一份，用户答复后再带 resume 参数重新调用；上传后等待网页解析自动填写相关字段。
+  4. 再次调用 browser_snapshot，找出仍未填写的输入框/下拉框。
+  5. 调用 getPersonalInfo 获取用户预定义的个人信息（敏感字段显示为 ***），决策每个待填控件对应的个人信息数据键（如 basic_info.name、basic_info.id_number）。
+  6. 调用 browser_fill_form，传入 [{ref, data_key}, ...] 映射列表完成填写，并向用户汇报已填与未匹配的字段。
+- 整个流程中不得把个人敏感信息的真实值写入对话文本，敏感值由后台替换填写。"""
 
 Security = """\
 - 严格保护用户隐私与敏感数据。
@@ -26,4 +35,7 @@ def build_system_prompt() -> str:
     from datetime import date
     today = "今天的日期是：" + str(date.today()) + "\n\n"
 
-    return f"{IDENTITY}\n\n{ToolUse}\n\n{Security}\n\n{OutputStyle}" + today
+    return (
+        f"{IDENTITY}\n\n{ToolUse}\n\n{DoingTask}\n\n{SubmitFlow}\n\n"
+        f"{Security}\n\n{OutputStyle}" + today
+    )

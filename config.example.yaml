@@ -30,3 +30,14 @@ providers:
 
 settings:
   max_concurrency: 3
+  # ---- Playwright MCP 服务（投递表单填写用）----
+  # 服务地址（后端通过 streamable HTTP 连接）
+  playwright_mcp_url: "http://localhost:8931/mcp"
+  # 是否由后端（run.py）自动拉起该服务（默认 true）。
+  # 置 false 时需手动启动，命令示例：
+  #   npx @playwright/mcp@latest --port 8931 --user-data-dir "D:/jobhelper-browser-profile"
+  playwright_mcp_auto_start: true
+  # 浏览器用户数据目录（登录态持久化）。留空则用 <项目根>/data/browser-profile
+  playwright_mcp_user_data_dir: ""
+  # 后端启动时等待 MCP 服务就绪的秒数（首次运行需下载依赖，建议 120）
+  playwright_mcp_startup_wait: 120
