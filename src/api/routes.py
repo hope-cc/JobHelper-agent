@@ -134,7 +134,7 @@ async def send_message(conversation_id: str, body: SendMessageBody):
 
     client = _get_client()
     registry = _get_registry()
-    graph = build_graph(client, registry)
+    graph = build_graph(client, registry, conversation_id=conversation_id)
 
     async def event_generator():
         full_response: list[str] = []

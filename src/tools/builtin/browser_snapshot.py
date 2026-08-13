@@ -48,11 +48,11 @@ class Params(BaseModel):
     description=(
         "获取当前网页的表单快照，返回原始快照结构（含字段标签、下拉选项、上传入口），"
         "仅去除公司声明等无意义长文本。用于识别待填字段、下拉选项与上传入口。"
+        "下拉框（generic [cursor=pointer]）的选项识别与探测请使用 browser_probe_dropdowns。"
     ),
 )
 async def browser_snapshot(params: Params):
     text, err = await call_tool("browser_snapshot", {})
     if err:
         return ToolResult(output=text, is_error=True)
-    print(text)
     return ToolResult(output=_strip_snapshot_long_text(text))

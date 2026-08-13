@@ -38,6 +38,7 @@ def list_conversations() -> list[dict]:
     return conversations
 
 
+
 def get_conversation(conversation_id: str) -> dict | None:
     """获取完整会话（含 messages）。不存在返回 None。"""
     fp = _file_path(conversation_id)
@@ -68,6 +69,11 @@ def add_message(conversation_id: str, message: dict) -> None:
     data = json.loads(fp.read_text(encoding="utf-8"))
     data["messages"].append(message)
     fp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+def add_system_reminder(conversation_id: str, reminder: str) -> None:
+    """向会话追加系统提醒消息。"""
+    content = f"<system-reminder>\n{reminder}\n</system-reminder>"
+    add_message(conversation_id, {"role": "user", "content": content})
 
 
 def update_title(conversation_id: str, title: str) -> None:

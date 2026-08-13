@@ -33,7 +33,8 @@ from src.llm.types import (
     ToolResultEvent,
 )
 from src.logger import graph_loop, llm_request_start, llm_request_done, tool_call_start, tool_call_result, tool_exec
-from src.prompt.prompt import build_system_prompt
+from src.api import storage
+from src.prompt.prompt import build_system_prompt, is_submit_flow_tool, next_step_reminder
 from src.tools.registry import ToolRegistry
 # ---- 常量 ----
 MAX_TOOL_LOOPS = 10
@@ -54,6 +55,7 @@ class ChatState(TypedDict):
     response: str
     tool_calls: NotRequired[list[ToolCall]]
     loop_count: NotRequired[int]
+    in_submit_flow: NotRequired[bool]
 
 
 # ---- 节点 ----
@@ -133,6 +135,7 @@ async def tool_node(
     config: RunnableConfig,
     *,
     registry: ToolRegistry,
+    conversation_id: str | None = None,
 ) -> dict:
     """执行工具调用并回传结果。
 
@@ -140,10 +143,14 @@ async def tool_node(
     每次执行结果：
     1. 通过 writer 实时透传 ToolResultEvent
     2. 以 role="tool" 的 Message 追加到对话历史
+    3. 投递流程中，进入流程（出现上传/个人信息等专属工具）后，
+       每步完成追加一条「下一步该做什么」的 system_reminder 消息，
+       并（若有 conversation_id）持久化到会话存储，阻止 agent 提前停止。
     """
     writer = get_stream_writer()
 
     tool_messages: list[Message] = []
+    in_flow = bool(state.get("in_submit_flow"))
 
     for tc in state.get("tool_calls", []):
         t0 = time.perf_counter()
@@ -169,10 +176,28 @@ async def tool_node(
             )
         )
 
+        # 投递流程提醒：流程专属工具出现即进入流程；此后每一步都注入下一步提醒
+        if is_submit_flow_tool(tc.tool_name):
+            in_flow = True
+        if in_flow:
+            reminder = next_step_reminder(tc.tool_name)
+            if reminder:
+                tool_messages.append(Message(
+                    role="user",
+                    content=f"<system-reminder>\n{reminder}\n</system-reminder>",
+                ))
+                if conversation_id:
+                    try:
+                        storage.add_system_reminder(conversation_id, reminder)
+                    except Exception:
+                        # 提醒持久化失败不影响工具执行（仅本次不落库）
+                        pass
+
     return {
         "messages": state["messages"] + tool_messages,
         "tool_calls": [],
         "response": "",
+        "in_submit_flow": in_flow,
     }
 
 
@@ -187,12 +212,17 @@ def _should_continue(state: ChatState) -> str:
 
 # ---- 图构建 ----
 
-def build_graph(client: BaseLLMClient, registry: ToolRegistry) -> StateGraph:
+def build_graph(
+    client: BaseLLMClient,
+    registry: ToolRegistry,
+    conversation_id: str | None = None,
+) -> StateGraph:
     """构建 ReAct 对话图并编译。
 
     Args:
         client: LLM 客户端（AnthropicAdapter / OpenAIAdapter）
         registry: 工具注册中心
+        conversation_id: 会话 ID，用于把投递流程的下一步提醒持久化到会话存储；None 则不持久化。
 
     Returns:
         编译后的 StateGraph 实例，可调用 .astream_events() 执行
@@ -208,9 +238,11 @@ def build_graph(client: BaseLLMClient, registry: ToolRegistry) -> StateGraph:
             state, config, client=client, tool_defs=tool_defs,
         )
 
-    # tool_node —— 闭包绑定 registry
+    # tool_node —— 闭包绑定 registry 和 conversation_id
     async def _tool_node(state: ChatState, config: RunnableConfig) -> dict:
-        return await tool_node(state, config, registry=registry)
+        return await tool_node(
+            state, config, registry=registry, conversation_id=conversation_id,
+        )
 
     graph.add_node("chat_node", _chat_node)
     graph.add_node("tool_node", _tool_node)

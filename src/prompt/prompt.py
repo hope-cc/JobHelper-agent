@@ -18,9 +18,44 @@ SubmitFlow = """\
   2. 用户回复「继续」后，调用 browser_snapshot 查看表单结构，确认是否存在简历上传入口（如「选择文件/上传简历」按钮）。
   3. 若有上传入口，调用 browser_upload_resume 上传 data/CV 中的简历。若工具返回多份简历候选清单，先向用户询问用哪一份，用户答复后再带 resume 参数重新调用；上传后等待网页解析自动填写相关字段。
   4. 再次调用 browser_snapshot，找出仍未填写的输入框/下拉框。
-  5. 调用 getPersonalInfo 获取用户预定义的个人信息（敏感字段显示为 ***），决策每个待填控件对应的个人信息数据键（如 basic_info.name、basic_info.id_number）。
-  6. 调用 browser_fill_form，传入 [{ref, data_key}, ...] 映射列表完成填写，并向用户汇报已填与未匹配的字段。
+  5. 调用 getPersonalInfo 获取用户预定义的个人信息（敏感字段显示为 ***）。
+  6. 调用 browser_fill_form，根据个人信息填写剩余的输入框。
+  7. 识别非标准下拉框：调用 browser_probe_dropdowns（无需传参，返回未填写的下拉框清单及其 ref/标签）。
+  8. 再调用browser_fill_dropdowns传入根据个人信息决定的值完成非标准下拉框填写。
 - 整个流程中不得把个人敏感信息的真实值写入对话文本，敏感值由后台替换填写。"""
+
+# 投递流程：某工具执行完后，下一步该做什么的提醒文本（用于阻止 agent 提前停止）。
+# browser_navigate / browser_snapshot 在进入流程（出现上传/个人信息等专属工具）后才注入，
+# 避免污染非投递场景；其余为流程专属工具，执行后始终注入。
+_SUBMIT_FLOW_NEXT = {
+    "browser_navigate": "已打开投递页。下一步：提示用户登录并切换到表单页，等待用户回复「继续」。",
+    "browser_snapshot": "下一步：继续投递流程——先确认是否还有未填写的输入框/下拉框，随后依次 getPersonalInfo → browser_fill_form → browser_probe_dropdowns → browser_fill_dropdowns 完成填写，全部完成前不要停止。",
+    "browser_upload_resume": "简历已上传。下一步：再次调用 browser_snapshot，找出仍未填写的输入框/下拉框。",
+    "getPersonalInfo": "下一步：调用 browser_fill_form，根据个人信息填写剩余的输入框。",
+    "browser_fill_form": "下一步：识别非标准下拉框，调用 browser_probe_dropdowns 返回未填写的下拉框清单。",
+    "browser_probe_dropdowns": "下一步：根据个人信息/用户偏好决定每个下拉框应选的值，调用 browser_fill_dropdowns 传入 [{ref, data_key 或 value}, ...] 完成填写。",
+    "browser_fill_dropdowns": "投递表单填写完成，向用户汇报已填/未匹配的字段。",
+}
+
+# 投递流程专属工具：一旦出现即视为进入流程，之后每一步都注入下一步提醒
+_SUBMIT_FLOW_TOOLS = {
+    "browser_upload_resume",
+    "getPersonalInfo",
+    "browser_fill_form",
+    "browser_probe_dropdowns",
+    "browser_fill_dropdowns",
+}
+
+
+def next_step_reminder(tool_name: str) -> str:
+    """返回投递流程中某工具执行完后下一步该做什么的提醒文本；非流程工具返回空串。"""
+    return _SUBMIT_FLOW_NEXT.get(tool_name, "")
+
+
+def is_submit_flow_tool(tool_name: str) -> bool:
+    """该工具是否属于投递流程专属工具（出现即视为进入投递流程）。"""
+    return tool_name in _SUBMIT_FLOW_TOOLS
+
 
 Security = """\
 - 严格保护用户隐私与敏感数据。
