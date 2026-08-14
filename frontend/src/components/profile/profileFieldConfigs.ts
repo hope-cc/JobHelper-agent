@@ -1,17 +1,14 @@
 import type {
   BasicInfo,
+  BasicFieldSchema,
   PersonalProfile,
   ProfileEntry,
   ProfileSectionKey,
 } from "../../types";
 
 /**
- * 字段配置：驱动表单渲染，也是「新增字段」的唯一入口。
- *
- * 新增一个字段时：
- * 1. 在对应分区的字段配置数组里加一行（key 为字典键名，label 为界面标签）
- * 2. 若是基本信息，同步在 types.ts 的 BasicInfo 里加对应属性；
- *    若是经历类条目，同步在 types.ts 对应 Entry 接口里加属性。
+ * 经历类分区（教育/奖项/语言）仍由代码预定义字段。
+ * 基本信息区字段改为用户自定义，DEFAULT_BASIC_FIELDS 仅作为首次加载时的默认 schema。
  */
 export interface ProfileFieldConfig {
   /** 字段键（英文 snake_case，即保存到 JSON 的键名） */
@@ -25,7 +22,8 @@ export interface ProfileFieldConfig {
   span?: boolean;
 }
 
-export const BASIC_INFO_FIELDS: ProfileFieldConfig[] = [
+/** 基本信息默认字段 schema（用户未改动时的初始/兜底值，键名与历史数据一致）。 */
+export const DEFAULT_BASIC_FIELDS: BasicFieldSchema[] = [
   { key: "name", label: "姓名", type: "text" },
   { key: "phone", label: "手机", type: "text" },
   { key: "email", label: "邮箱", type: "text" },
@@ -62,23 +60,6 @@ export const EDUCATION_FIELDS: ProfileFieldConfig[] = [
   { key: "major", label: "专业", type: "text" },
 ];
 
-export const INTERNSHIP_FIELDS: ProfileFieldConfig[] = [
-  { key: "start_time", label: "开始时间", type: "text" },
-  { key: "end_time", label: "结束时间", type: "text" },
-  { key: "company", label: "公司名称", type: "text" },
-  { key: "position", label: "职位名称", type: "text" },
-  { key: "description", label: "描述", type: "textarea", span: true },
-];
-
-export const PROJECT_FIELDS: ProfileFieldConfig[] = [
-  { key: "start_time", label: "开始时间", type: "text" },
-  { key: "end_time", label: "结束时间", type: "text" },
-  { key: "name", label: "项目名称", type: "text" },
-  { key: "role", label: "项目角色", type: "text" },
-  { key: "link", label: "项目链接", type: "text" },
-  { key: "description", label: "描述", type: "textarea", span: true },
-];
-
 export const AWARD_FIELDS: ProfileFieldConfig[] = [
   { key: "time", label: "获奖时间", type: "text" },
   { key: "name", label: "获奖名称", type: "text" },
@@ -100,20 +81,19 @@ export const LANGUAGE_FIELDS: ProfileFieldConfig[] = [
   },
 ];
 
-/** 从字段配置构造空的基本信息对象。 */
+/** 从默认字段配置构造空的基本信息对象。 */
 export function emptyBasicInfo(): BasicInfo {
   return Object.fromEntries(
-    BASIC_INFO_FIELDS.map((f) => [f.key, ""])
-  ) as unknown as BasicInfo;
+    DEFAULT_BASIC_FIELDS.map((f) => [f.key, ""])
+  ) as BasicInfo;
 }
 
 /** 空默认的整份个人信息（进入页面、保存前回填时的兜底结构）。 */
 export function emptyProfile(): PersonalProfile {
   return {
+    basic_fields_schema: DEFAULT_BASIC_FIELDS.map((f) => ({ ...f })),
     basic_info: emptyBasicInfo(),
     education: [],
-    internship: [],
-    project: [],
     award: [],
     language: [],
     self_evaluation: "",
@@ -129,4 +109,28 @@ export function createEmptyEntry(
   const entry: Record<string, string> = { id: crypto.randomUUID() };
   for (const f of fields) entry[f.key] = "";
   return entry as unknown as ProfileEntry;
+}
+
+/**
+ * 根据用户填写的标签生成稳定键：
+ * - 中文可直接作为键（Python/JSON/`basic_info.<key>` 路径解析均兼容）
+ * - 清洗点号、空白、换行等会破坏路径解析的字符 → 下划线
+ * - 与已有键冲突时追加 _2、_3 序号保证唯一
+ */
+export function sanitizeFieldKey(label: string, existingKeys: string[]): string {
+  const cleaned = label
+    .trim()
+    .replace(/[.\s]+/g, "_")
+    .replace(/_+/g, "_");
+  if (!cleaned) {
+    return `field_${existingKeys.length + 1}`;
+  }
+  let key = cleaned;
+  let n = 2;
+  const used = new Set(existingKeys);
+  while (used.has(key)) {
+    key = `${cleaned}_${n}`;
+    n += 1;
+  }
+  return key;
 }

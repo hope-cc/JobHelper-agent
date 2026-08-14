@@ -6,6 +6,7 @@ import {
   type ReactNode,
 } from "react";
 import type {
+  BasicFieldSchema,
   PersonalProfile,
   ProfileEntry,
   ProfileSectionKey,
@@ -15,6 +16,10 @@ import { emptyProfile } from "./profile/profileFieldConfigs";
 type ProfileAction =
   | { type: "LOAD_PROFILE"; profile: PersonalProfile }
   | { type: "SET_BASIC_FIELD"; key: string; value: string }
+  | { type: "ADD_BASIC_FIELD"; schema: BasicFieldSchema }
+  | { type: "RENAME_BASIC_FIELD"; key: string; label: string }
+  | { type: "DELETE_BASIC_FIELD"; key: string }
+  | { type: "MOVE_BASIC_FIELD"; fromIndex: number; toIndex: number }
   | { type: "ADD_ENTRY"; section: ProfileSectionKey; entry: ProfileEntry }
   | {
       type: "SET_ENTRY_FIELD";
@@ -40,6 +45,41 @@ function profileReducer(
         ...state,
         basic_info: { ...state.basic_info, [action.key]: action.value },
       };
+
+    case "ADD_BASIC_FIELD":
+      return {
+        ...state,
+        basic_fields_schema: [...state.basic_fields_schema, action.schema],
+      };
+
+    case "RENAME_BASIC_FIELD":
+      return {
+        ...state,
+        basic_fields_schema: state.basic_fields_schema.map((f) =>
+          f.key === action.key ? { ...f, label: action.label } : f
+        ),
+      };
+
+    case "DELETE_BASIC_FIELD": {
+      const { [action.key]: _removed, ...restInfo } = state.basic_info;
+      return {
+        ...state,
+        basic_fields_schema: state.basic_fields_schema.filter(
+          (f) => f.key !== action.key
+        ),
+        basic_info: restInfo,
+        masked_basic_fields: state.masked_basic_fields.filter(
+          (k) => k !== action.key
+        ),
+      };
+    }
+
+    case "MOVE_BASIC_FIELD": {
+      const list = [...state.basic_fields_schema];
+      const [moved] = list.splice(action.fromIndex, 1);
+      list.splice(action.toIndex, 0, moved);
+      return { ...state, basic_fields_schema: list };
+    }
 
     case "ADD_ENTRY": {
       const list = state[action.section] as ProfileEntry[];

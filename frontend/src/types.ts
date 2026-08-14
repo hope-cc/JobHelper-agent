@@ -150,18 +150,15 @@ export type ResumeAction =
 
 // ========== 个人信息管理相关类型 ==========
 
-/** 基本信息（个人证件为类型 + 号码 + 有效期三字段） */
-export interface BasicInfo {
-  name: string;
-  phone: string;
-  email: string;
-  gender: string;
-  age: string;
-  location: string;
-  id_type: string;
-  id_number: string;
-  id_valid_until: string;
-  hometown: string;
+/** 基本信息：键名由 basic_fields_schema 定义，值为字符串 */
+export type BasicInfo = Record<string, string>;
+
+/** 基本信息字段元数据：驱动渲染与持久化。键创建后永不改变，标签可改。 */
+export interface BasicFieldSchema {
+  key: string;
+  label: string;
+  type: "text" | "textarea" | "select";
+  options?: string[];
 }
 
 /** 教育经历单条记录（id 仅前端使用，保存时剥离） */
@@ -173,27 +170,6 @@ export interface EducationEntry {
   degree: string;
   degree_type: string;
   major: string;
-}
-
-/** 实习经历单条记录 */
-export interface InternshipEntry {
-  id: string;
-  start_time: string;
-  end_time: string;
-  company: string;
-  position: string;
-  description: string;
-}
-
-/** 项目经历单条记录 */
-export interface ProjectEntry {
-  id: string;
-  start_time: string;
-  end_time: string;
-  name: string;
-  role: string;
-  link: string;
-  description: string;
 }
 
 /** 奖项单条记录 */
@@ -212,27 +188,16 @@ export interface LanguageEntry {
 }
 
 /** 经历类分区的键 */
-export type ProfileSectionKey =
-  | "education"
-  | "internship"
-  | "project"
-  | "award"
-  | "language";
+export type ProfileSectionKey = "education" | "award" | "language";
 
 /** 各分区单条记录的联合类型 */
-export type ProfileEntry =
-  | EducationEntry
-  | InternshipEntry
-  | ProjectEntry
-  | AwardEntry
-  | LanguageEntry;
+export type ProfileEntry = EducationEntry | AwardEntry | LanguageEntry;
 
 /** 整份个人信息字典（前端表单状态，条目含局部 id） */
 export interface PersonalProfile {
+  basic_fields_schema: BasicFieldSchema[];
   basic_info: BasicInfo;
   education: EducationEntry[];
-  internship: InternshipEntry[];
-  project: ProjectEntry[];
   award: AwardEntry[];
   language: LanguageEntry[];
   self_evaluation: string;
@@ -242,10 +207,9 @@ export interface PersonalProfile {
 
 /** 持久化 / 传给后端的字典结构（不含前端条目 id），与 data/personal/profile.json 一致 */
 export type SavableProfile = {
+  basic_fields_schema: BasicFieldSchema[];
   basic_info: BasicInfo;
   education: Omit<EducationEntry, "id">[];
-  internship: Omit<InternshipEntry, "id">[];
-  project: Omit<ProjectEntry, "id">[];
   award: Omit<AwardEntry, "id">[];
   language: Omit<LanguageEntry, "id">[];
   self_evaluation: string;

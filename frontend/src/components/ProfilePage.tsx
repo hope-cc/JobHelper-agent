@@ -6,28 +6,21 @@ import EntrySection from "./profile/EntrySection";
 import SelfEvaluationSection from "./profile/SelfEvaluationSection";
 import {
   AWARD_FIELDS,
+  DEFAULT_BASIC_FIELDS,
   EDUCATION_FIELDS,
-  INTERNSHIP_FIELDS,
   LANGUAGE_FIELDS,
-  PROJECT_FIELDS,
-  emptyProfile,
 } from "./profile/profileFieldConfigs";
 import type { PersonalProfile, SavableProfile } from "../types";
 
-/** 后端返回的字典（无 id）→ 前端状态（条目补上局部 id），并用空默认结构兜底缺失键。 */
+/** 后端返回的字典（无 id）→ 前端状态（条目补上局部 id）；基本信息字段 schema 缺失时回退默认预设。 */
 function toStateProfile(saved: SavableProfile): PersonalProfile {
-  const base = emptyProfile();
   return {
-    basic_info: { ...base.basic_info, ...saved.basic_info },
+    basic_fields_schema:
+      saved.basic_fields_schema?.length
+        ? saved.basic_fields_schema
+        : DEFAULT_BASIC_FIELDS,
+    basic_info: saved.basic_info ?? {},
     education: (saved.education ?? []).map((e) => ({
-      ...e,
-      id: crypto.randomUUID(),
-    })),
-    internship: (saved.internship ?? []).map((e) => ({
-      ...e,
-      id: crypto.randomUUID(),
-    })),
-    project: (saved.project ?? []).map((e) => ({
       ...e,
       id: crypto.randomUUID(),
     })),
@@ -47,10 +40,9 @@ function toStateProfile(saved: SavableProfile): PersonalProfile {
 /** 前端状态 → 持久化字典（剥离条目 id，保证 JSON 干净）。 */
 function toSavableProfile(state: PersonalProfile): SavableProfile {
   return {
+    basic_fields_schema: state.basic_fields_schema,
     basic_info: state.basic_info,
     education: state.education.map(({ id: _id, ...rest }) => rest),
-    internship: state.internship.map(({ id: _id, ...rest }) => rest),
-    project: state.project.map(({ id: _id, ...rest }) => rest),
     award: state.award.map(({ id: _id, ...rest }) => rest),
     language: state.language.map(({ id: _id, ...rest }) => rest),
     self_evaluation: state.self_evaluation,
@@ -124,16 +116,6 @@ function ProfilePageInner() {
           title="教育经历"
           section="education"
           fields={EDUCATION_FIELDS}
-        />
-        <EntrySection
-          title="实习经历"
-          section="internship"
-          fields={INTERNSHIP_FIELDS}
-        />
-        <EntrySection
-          title="项目经历"
-          section="project"
-          fields={PROJECT_FIELDS}
         />
         <EntrySection title="奖项" section="award" fields={AWARD_FIELDS} />
         <EntrySection

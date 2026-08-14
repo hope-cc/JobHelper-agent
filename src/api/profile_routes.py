@@ -13,9 +13,8 @@ class PersonalProfileBody(BaseModel):
     """整份个人信息字典，键与前端保存的结构一致。"""
 
     basic_info: dict
+    basic_fields_schema: list = []
     education: list
-    internship: list
-    project: list
     award: list
     language: list
     self_evaluation: str
