@@ -32,28 +32,38 @@ def _build_system_prompt(task: dict) -> str:
     """根据任务字段构建招聘信息提取的系统提示词。"""
     return f"""你是一个精通提取招聘信息的子agent，请根据任务要求执行操作。
 
-任务要求: {task.get('context', '')}
+【任务要求】: {task.get('context', '')}
 
-任务步骤：调用工具 {task.get('action', 'click')}，传入参数 url="{task.get('url', '')}" 和 text="{task.get('target_text', '')}" 来抓取该公司的招聘简章，并且提炼招聘关键信息并以 json 格式输出。
+【任务步骤】：调用工具 {task.get('action', 'click')}，传入参数 url="{task.get('url', '')}" 和 text="{task.get('target_text', '')}" 来抓取该公司的招聘简章并提取所有招聘职位，并按照“一个职位对应一个 JSON 对象”的方式输出。
 
-招聘关键信息包括：公司名称、招聘岗位、岗位职责、任职要求、工作地点、投递方式。以下是一个输出示例：
-{{
-    "company": "示例公司",
-    "introduction": "示例公司简介",
-    "position": ["岗位1", "岗位2"],
-    "duty": ["职责1", "职责2"],
-    "Requirement": ["要求1", "要求2"],
-    "base": "广州/深圳",
-    "delivery": "登录"招银网络科技"官方网站（https://cmbnt.cmbchina.com），点击进入校园招聘页面注册并投递简历"
-}}
+【字段定义】：每个职位必须包含以下字段：
+{
+    "公司": "",
+    "职位": "",
+    "工作职责": "",
+    "任职要求": "",
+    "工作地点": "",
+    "投递方式": ""
+}
 
-注意：
+【注意】：
 1、请严格按照上述json格式输出，不要添加额外的解释或文本。
-2、招聘信息没有提供某些字段时，该字段的值应为空字符串或空列表。
+2、招聘信息没有提供某些字段时，该字段的值应为空字符串。
 3、请确保输出的json格式正确，避免语法错误。
-4、position、duty、Requirement用招聘网页的原句不要修改；
-5、delivery应该简略描述，包括投递方式和投递网址，尽量简短；
-6、introduction应该简略描述公司简介，80字以内；
+4、职位、工作职责、任职要求用招聘网页的原句不要修改；
+5、投递方式应该简略描述，仅包括投递方式和投递网址，尽量简短；
+
+【输出格式】：
+[
+    {
+        "公司": "招商银行·招银网络科技",
+        "职位": "后端开发工程师",
+        "工作职责": "招聘网页中的原文",
+        "任职要求": "招聘网页中的原文",
+        "工作地点": "广州/深圳",
+        "投递方式": "官网投递：https://cmbnt.cmbchina.com"
+    }
+]
 """
 
 
@@ -143,6 +153,7 @@ async def sub_agent_executor(task: dict, client: BaseLLMClient) -> TaskResult:
                 client, messages, system_prompt, tool_defs,
             )
         except Exception as exc:
+            print(f"LLM 调用失败: {exc}")
             return TaskResult(
                 task=task,
                 output="",
@@ -159,6 +170,8 @@ async def sub_agent_executor(task: dict, client: BaseLLMClient) -> TaskResult:
 
         # 3. 无工具调用 → 结束，返回最终文本
         if not tool_calls:
+            import time
+            print(time.time(), f"任务完成")
             return TaskResult(
                 task=task,
                 output=text_output,
@@ -175,6 +188,7 @@ async def sub_agent_executor(task: dict, client: BaseLLMClient) -> TaskResult:
             ))
 
     # 超出最大轮数
+    print(f"超过最大工具调用轮数 ({MAX_SUB_AGENT_LOOPS})")
     return TaskResult(
         task=task,
         output="",

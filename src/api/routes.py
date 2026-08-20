@@ -110,11 +110,11 @@ async def send_message(conversation_id: str, body: SendMessageBody):
         raise HTTPException(status_code=404, detail="会话不存在")
 
     # 收集已完成的子任务结果，注入到用户消息
-    from src.sub_agent.dispatcher import task_dispatcher
-    sub_results = task_dispatcher.drain_results()
-    if sub_results:
-        reminder = _format_results_as_reminder(sub_results)
-        body.content = body.content + "\n\n" + reminder
+    # from src.sub_agent.dispatcher import task_dispatcher
+    # sub_results = task_dispatcher.drain_results()
+    # if sub_results:
+    #     reminder = _format_results_as_reminder(sub_results)
+    #     body.content = body.content + "\n\n" + reminder
 
     # 追加用户消息到存储
     storage.add_message(conversation_id, {"role": "user", "content": body.content})

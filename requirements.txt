@@ -3,3 +3,5 @@ openai
 langgraph
 pyyaml
 mcp
+jieba
+rank_bm25

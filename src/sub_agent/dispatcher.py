@@ -11,13 +11,43 @@ LLM 客户端执行，无空闲时自动挂起等待。
 from __future__ import annotations
 
 import asyncio
+import json
 from dataclasses import dataclass
 from typing import Any
 
 from src.llm.base import BaseLLMClient
 from src.llm.types import ProviderConfig
+from src.rag.store import job_vector_store
 from src.sub_agent.types import TaskItem, TaskResult
 from src.sub_agent.worker import sub_agent_executor
+
+import time
+
+# ---- 结果解析辅助 ----
+
+def _parse_jobs_json(output: str) -> list[dict]:
+    """容错解析子 agent 输出的职位 JSON 数组。
+
+    处理 LLM 输出不稳定情况：``` 代码围栏包裹、整体为单个对象；
+    非法 JSON 返回空列表（调用方跳过并记录）。
+    """
+    text = output.strip()
+    if text.startswith("```"):
+        lines = text.splitlines()
+        if lines and lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].strip().startswith("```"):
+            lines = lines[:-1]
+        text = "\n".join(lines).strip()
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        return []
+    if isinstance(data, dict):
+        data = [data]
+    if not isinstance(data, list):
+        return []
+    return [item for item in data if isinstance(item, dict)]
 
 
 # ---- 调度器 ----
@@ -57,11 +87,18 @@ class TaskDispatcher:
         self._busy: list[bool] = []
         self._condition = asyncio.Condition()
 
-        # 结果队列：子任务完成后 put，调用方通过 drain_results() get
+        # 结果队列：子任务完成后 put，后台消费协程自动取出并入向量库
         self._result_queue: asyncio.Queue[TaskResult] = asyncio.Queue()
 
         # 追踪进行中的任务协程，用于 shutdown 时取消
         self._task_futures: set[asyncio.Task] = set()
+
+        # 后台消费协程：自动检测 _result_queue，有新结果即解析入库
+        self._consumer_task: asyncio.Task | None = None
+
+        # 「公司+职位」去重集合，防止重复入向量库；启动时从向量库重建
+        self._known_jobs: set[tuple[str, str]] = set()
+        self._known_jobs_loaded: bool = False
 
     # ---- 依赖注入 ----
 
@@ -101,6 +138,12 @@ class TaskDispatcher:
         if not self._sub_agents:
             self.create_worker_clients()
 
+        # 懒启动后台消费协程 + 重建去重集合
+        self._ensure_consumer()
+        self._load_known_jobs()
+
+        if self._pending == 0:
+            print(time.time(), "调度器开始处理任务")
 
         self._pending += len(tasks)
         self._done_event.clear()
@@ -119,31 +162,33 @@ class TaskDispatcher:
         )
 
     def drain_results(self) -> list[TaskResult]:
-        """取出并清空所有已完成的任务结果。非阻塞。
+        """（已废弃）结果由后台消费协程自动入库，不再主动拉取。
 
-        应在每次用户发消息时调用，取出上一轮派遣的子任务结果。
-        取出的结果不再保留——每条结果只被消费一次。
+        保留空实现以兼容旧调用方——结果队列已被后台协程消费。
         """
-        results: list[TaskResult] = []
-        while not self._result_queue.empty():
-            try:
-                results.append(self._result_queue.get_nowait())
-            except asyncio.QueueEmpty:
-                break
-        return results
+        return []
 
     async def wait_all(self) -> list[TaskResult]:
-        """阻塞等待所有任务完成，返回剩余未 drain 的结果列表。"""
+        """阻塞等待所有任务完成。结果已由后台消费，不再返回。"""
         await self._done_event.wait()
-        return self.drain_results()
+        return []
 
     async def shutdown(self) -> None:
-        """关闭调度器：取消所有未完成的任务协程并等待结束。"""
+        """关闭调度器：取消所有未完成的任务协程与后台消费协程。"""
         for fut in self._task_futures:
             fut.cancel()
         if self._task_futures:
             await asyncio.gather(*self._task_futures, return_exceptions=True)
         self._task_futures.clear()
+
+        if self._consumer_task is not None:
+            self._consumer_task.cancel()
+            try:
+                await self._consumer_task
+            except asyncio.CancelledError:
+                pass
+            self._consumer_task = None
+
         self._done_event.set()
 
     @property
@@ -204,6 +249,61 @@ class TaskDispatcher:
 
         if self._pending <= 0:
             self._done_event.set()
+
+    # ---- 结果自动入库 ----
+
+    def _ensure_consumer(self) -> None:
+        """幂等懒启动后台消费协程，自动检测 _result_queue。
+
+        无需用户发消息触发——子任务结果一入队即被消费并入向量库。
+        首次 dispatch 时启动；shutdown 时取消。
+        """
+        if self._consumer_task is not None and not self._consumer_task.done():
+            return
+        self._consumer_task = asyncio.create_task(self._consumer_loop())
+
+    async def _consumer_loop(self) -> None:
+        while True:
+            result = await self._result_queue.get()
+            await self._ingest_result(result)
+
+    async def _ingest_result(self, result: TaskResult) -> None:
+        """解析一条子任务结果，逐职位写入向量库（带去重）。"""
+        if not result.success:
+            return
+
+        jobs = _parse_jobs_json(result.output)
+        for job in jobs:
+            company = str(job.get("公司", "") or "").strip()
+            position = str(job.get("职位", "") or "").strip()
+            if not company or not position:
+                continue  # 缺公司/职位的记录不入库
+
+            key = (company, position)
+            if key in self._known_jobs:
+                continue  # 已存在，跳过（去重）
+
+            try:
+                ok = job_vector_store.add_job(job)
+            except Exception:
+                ok = False
+            if ok:
+                self._known_jobs.add(key)
+
+    def _load_known_jobs(self) -> None:
+        """从向量库现有记录重建「公司+职位」去重集合（进程内只重建一次）。"""
+        if self._known_jobs_loaded:
+            return
+        try:
+            for rec in job_vector_store.all_records():
+                meta = rec.get("metadata", {})
+                company = str(meta.get("company", "") or "").strip()
+                position = str(meta.get("position", "") or "").strip()
+                if company and position:
+                    self._known_jobs.add((company, position))
+        except Exception:
+            pass
+        self._known_jobs_loaded = True
 
 
 # ---- 全局单例 ----

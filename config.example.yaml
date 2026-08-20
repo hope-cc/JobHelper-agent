@@ -1,43 +1,29 @@
-# JobHelper 配置模板
+# JobHelper LLM 供应商配置模板
 # 将此文件复制为 config.yaml 并填入你的真实信息
 # config.yaml 已在 .gitignore 中排除，不会被提交到仓库
 #
-# 格式说明：
-#   - 顶层可以是纯供应商列表（旧格式，兼容），也可以是有 providers/settings 键的字典（新格式）
-#   - providers：LLM 供应商列表，每项包含以下字段：
-#       name     - 供应商标识名（必填，不可重复）
-#       protocol - 协议类型，anthropic | openai（必填）
-#       model    - 模型名称（必填）
-#       base_url - API 端点地址（必填）
-#       api_key  - 认证密钥（必填）
-#       thinking - 是否启用扩展思考，仅 anthropic 生效（可选，默认 false）
-#   - settings：应用级设置（可选）
-#       max_concurrency - 子 agent 最大并发数（可选，默认 3）
+# 每个供应商配置包含以下字段：
+#   name     - 供应商标识名，用于区分多个配置（必填，不可重复）
+#   protocol - 协议类型，可选值：anthropic | openai（必填）
+#   model    - 模型名称（必填）
+#   base_url - API 端点地址（必填）
+#   api_key  - 认证密钥（必填，请勿提交到版本控制）
+#   thinking - 是否启用扩展思考，仅 protocol=anthropic 时生效（可选，默认 false）
 
-providers:
-  - name: "claude"
-    protocol: "anthropic"
-    model: "claude-sonnet-4-5-20250929"
-    base_url: "https://api.anthropic.com"
-    api_key: "sk-ant-your-key-here"
-    thinking: false
+- name: "deepseek"
+  protocol: "anthropic"
+  model: "deepseek-v4-flash"
+  base_url: "https://api.deepseek.com/anthropic"
+  api_key: "sk-410f8cc935be435aa03b42cd1650bfb6"
+  thinking: true
 
-  - name: "gpt"
-    protocol: "openai"
-    model: "gpt-4o"
-    base_url: "https://api.openai.com/v1"
-    api_key: "sk-your-key-here"
 
-settings:
-  max_concurrency: 3
-  # ---- Playwright MCP 服务（投递表单填写用）----
-  # 服务地址（后端通过 streamable HTTP 连接）
-  playwright_mcp_url: "http://localhost:8931/mcp"
-  # 是否由后端（run.py）自动拉起该服务（默认 true）。
-  # 置 false 时需手动启动，命令示例：
-  #   npx @playwright/mcp@latest --port 8931 --user-data-dir "D:/jobhelper-browser-profile"
-  playwright_mcp_auto_start: true
-  # 浏览器用户数据目录（登录态持久化）。留空则用 <项目根>/data/browser-profile
-  playwright_mcp_user_data_dir: ""
-  # 后端启动时等待 MCP 服务就绪的秒数（首次运行需下载依赖，建议 120）
-  playwright_mcp_startup_wait: 120
+
+# - name: "gpt"
+#   protocol: "openai"
+#   model: "gpt-4o"
+#   base_url: "https://api.openai.com/v1"
+#   api_key: "sk-your-key-here"
+
+
+

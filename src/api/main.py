@@ -104,6 +104,16 @@ def main():
     task_dispatcher.set_provider_config(provider)
     task_dispatcher.set_worker_num(max_concurrency)
 
+    # 注入招聘信息向量库配置（缺省用默认值，不配置也能跑）
+    from src.rag.store import job_vector_store
+    rag_cfg = settings.get("rag", {}) or {}
+    job_vector_store.configure(
+        ollama_base_url=rag_cfg.get("ollama_base_url"),
+        embedding_model=rag_cfg.get("embedding_model"),
+        vector_dir=rag_cfg.get("vector_dir"),
+        retrieval_top_k=rag_cfg.get("retrieval_top_k"),
+    )
+
     # 自动拉起 Playwright MCP 服务（后台线程启动，不阻塞后端/前端访问；
     # 客户端在首次调用时若连不上会短时重试）
     # mcp_handle = McpServerHandle()
