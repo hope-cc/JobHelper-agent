@@ -1,0 +1,636 @@
+### Page
+- Page URL: https://cxmt.zhiye.com/form?fromPage=job&jobAdId=395a94d2-de98-4c0e-99cd-da50385b6d2f&userId=124812433
+- Page Title: 长鑫存储技术有限公司
+- Console: 6 errors, 2 warnings
+### Snapshot
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e3]:
+    - generic [ref=e5]:
+      - generic [ref=e7]:
+        - img [ref=e9] [cursor=pointer]
+        - generic [ref=e10]:
+          - generic [ref=e61]:
+            - generic [ref=e62]: 首页
+            - generic [ref=e65]: 社会招聘
+            - generic [ref=e68]: 校园招聘
+            - generic [ref=e71]: 实习生招聘
+          - generic [ref=e24]: +86 189****3892
+      - textbox "搜索职位关键词" [ref=e37]
+    - generic [ref=e38]:
+      - generic [ref=e40]:
+        - generic [ref=e41]: "你正在投递职位: AI Agent研发(J20267)"
+        - generic [ref=e75]:
+          - text: 最多可投递
+          - generic [ref=e76]: "3"
+          - text: 个校园招聘职位，还可投递
+          - generic [ref=e77]: "3"
+          - text: 个
+      - generic [ref=e80]:
+        - generic [ref=e83]:
+          - generic [ref=e84]:
+            - generic [ref=e85]: 上传简历
+            - generic [ref=e88] [cursor=pointer]:
+              - generic [ref=e89]:
+                - img "icon/上传" [ref=e91]
+                - text: 拖拽或点击上传简历，我们帮你快速解析~
+              - generic [ref=e93]: 支持doc、docx、pdf、html、htm、txt、rtf、eml、wps、jpeg、jpg、png、ppt、pptx格式文件上传，最大不超过50MB
+          - generic [ref=e94]:
+            - generic [ref=e95]: 投递意向
+            - generic [ref=e104]:
+              - generic [ref=e106]:
+                - generic [ref=e107]: 面试站点
+                - generic [ref=e116] [cursor=pointer]:
+                  - generic [ref=e118]: 请选择
+                  - list [ref=e119]:
+                    - listitem [ref=e120]:
+                      - textbox [ref=e121]
+              - generic [ref=e129]:
+                - generic [ref=e130]: 意向工作地点
+                - generic [ref=e139] [cursor=pointer]:
+                  - generic [ref=e141]: 请选择
+                  - list [ref=e142]:
+                    - listitem [ref=e143]:
+                      - textbox [ref=e144]
+          - generic [ref=e150]:
+            - generic [ref=e151]: 个人信息
+            - generic [ref=e152]: 籍贯 请填写精确到省/市，例如安徽省/合肥市 邮箱 请填写个人正常使用邮箱地址，建议不要填写学校后缀邮箱地址
+            - generic [ref=e160]:
+              - generic [ref=e161]:
+                - generic [ref=e163]:
+                  - generic [ref=e164]: "* 姓名"
+                  - textbox "请输入" [ref=e168]
+                - generic [ref=e170]:
+                  - generic [ref=e171]: "* 手机号码"
+                  - generic [ref=e174]:
+                    - generic [ref=e175]: "+86"
+                    - textbox "请输入" [ref=e187]: "18928733892"
+              - generic [ref=e188]:
+                - generic [ref=e190]:
+                  - generic [ref=e191]: "* 英文名"
+                  - textbox "请输入" [ref=e195]
+                - generic [ref=e198]:
+                  - generic [ref=e199]: 证件照
+                  - generic [ref=e201]: 上传文件
+              - generic [ref=e212]:
+                - generic [ref=e214]:
+                  - generic [ref=e215]: "* 邮箱"
+                  - textbox "请填写个人正常使用邮箱地址，建议不要填写学校后缀邮箱地址" [ref=e219]
+                - generic [ref=e221]:
+                  - generic [ref=e222]: "* 性别"
+                  - generic [ref=e225]:
+                    - generic [ref=e226]: 男
+                    - generic [ref=e233]: 女
+                    - generic [ref=e240]: 保密
+              - generic [ref=e247]:
+                - generic [ref=e249]:
+                  - generic [ref=e250]: 出生日期
+                  - generic [ref=e257] [cursor=pointer]:
+                    - generic [ref=e258]: 请选择
+                    - list [ref=e259]:
+                      - listitem [ref=e260]:
+                        - textbox [ref=e261]
+                - generic [ref=e267]:
+                  - generic [ref=e268]: "* 证件号码"
+                  - generic [ref=e271]:
+                    - generic [ref=e272]: 身份证
+                    - textbox "请输入" [ref=e286]
+              - generic [ref=e287]:
+                - generic [ref=e289]:
+                  - generic [ref=e290]: "* 籍贯"
+                  - generic [ref=e298] [cursor=pointer]:
+                    - generic [ref=e299]: 请选择
+                    - list [ref=e300]:
+                      - listitem [ref=e301]:
+                        - textbox [ref=e302]
+                - generic [ref=e309]:
+                  - generic [ref=e310]: "* 国籍Nationality/Region"
+                  - generic [ref=e317] [cursor=pointer]:
+                    - generic [ref=e318]: 中国
+                    - list [ref=e319]:
+                      - listitem [ref=e320]:
+                        - textbox [ref=e321]: 中国
+                      - generic: 中国
+              - generic [ref=e327]:
+                - generic [ref=e329]:
+                  - generic [ref=e330]: "* 英语等级"
+                  - generic [ref=e337] [cursor=pointer]:
+                    - generic [ref=e338]: 四级
+                    - list [ref=e339]:
+                      - listitem [ref=e340]:
+                        - textbox [ref=e341]: 四级
+                      - generic: 四级
+                - generic [ref=e348]:
+                  - generic [ref=e349]: "* 英语等级成绩"
+                  - textbox "请输入" [ref=e353]
+              - generic [ref=e354]:
+                - generic [ref=e357]:
+                  - generic [ref=e358]: "* 英语等级文件上传"
+                  - generic [ref=e360]: 上传文件
+                - generic [ref=e372]:
+                  - generic [ref=e373]: "* 绿卡国家Country Of The Green Card"
+                  - generic [ref=e380] [cursor=pointer]:
+                    - generic [ref=e382]: 请选择
+                    - list [ref=e383]:
+                      - listitem [ref=e384]:
+                        - textbox [ref=e385]
+              - generic [ref=e391]:
+                - generic [ref=e393]:
+                  - generic [ref=e394]: "* 第二国籍The Second Nationality"
+                  - generic [ref=e401] [cursor=pointer]:
+                    - generic [ref=e403]: 请选择
+                    - list [ref=e404]:
+                      - listitem [ref=e405]:
+                        - textbox [ref=e406]
+                - generic [ref=e413]:
+                  - generic [ref=e414]: 最高学历
+                  - generic [ref=e421] [cursor=pointer]:
+                    - generic [ref=e423]: 请选择
+                    - list [ref=e424]:
+                      - listitem [ref=e425]:
+                        - textbox [ref=e426]
+              - generic [ref=e432]:
+                - generic [ref=e434]:
+                  - generic [ref=e435]: "* 高考总分"
+                  - textbox "请输入" [ref=e439]
+                - generic [ref=e441]:
+                  - generic [ref=e442]: "* 语文单科成绩"
+                  - textbox "请输入" [ref=e446]
+              - generic [ref=e447]:
+                - generic [ref=e449]:
+                  - generic [ref=e450]: "* 数学单科成绩"
+                  - textbox "请输入" [ref=e454]
+                - generic [ref=e456]:
+                  - generic [ref=e457]: "* 外语单科成绩"
+                  - textbox "请输入" [ref=e461]
+              - generic [ref=e462]:
+                - generic [ref=e464]:
+                  - generic [ref=e465]: "* 综合学科得分"
+                  - textbox "请输入" [ref=e469]
+                - generic [ref=e471]:
+                  - generic [ref=e472]: "* 高中是否获得奥赛奖励"
+                  - generic [ref=e479] [cursor=pointer]:
+                    - generic [ref=e481]: 请选择
+                    - list [ref=e482]:
+                      - listitem [ref=e483]:
+                        - textbox [ref=e484]
+              - generic [ref=e490]:
+                - generic [ref=e492]:
+                  - generic [ref=e493]: 奥赛奖励详细描述
+                  - generic [ref=e496]:
+                    - textbox "请输入" [ref=e497]
+                    - generic [ref=e498]: 0/32766
+                - generic [ref=e505]:
+                  - generic [ref=e506]: "* 是否有联培/交换经历(如有请在项目经历中注明，请勿填写至教育经历中)"
+                  - generic [ref=e513] [cursor=pointer]:
+                    - generic [ref=e515]: 请选择
+                    - list [ref=e516]:
+                      - listitem [ref=e517]:
+                        - textbox [active] [ref=e518]
+          - generic [ref=e524]:
+            - generic [ref=e525]: 附件
+            - generic [ref=e537]:
+              - generic [ref=e538]: "* 最高学历成绩单(PDF附件小于5M)"
+              - generic [ref=e540]: 上传文件
+          - generic [ref=e551]:
+            - generic [ref=e552]: 求职意向
+            - generic [ref=e563]:
+              - generic [ref=e564]: "* 是否服从志愿调剂"
+              - generic [ref=e567]:
+                - generic [ref=e568]: 是
+                - generic [ref=e575]: 否
+          - generic [ref=e582]:
+            - generic [ref=e583]: 教育经历
+            - generic [ref=e584]: 1，结束时间请选择预计毕业日期，请勿填写“至今” 2，联培/交换/双学位经历请在项目经历中注明，请勿填写至教育经历中 3，请填写标准学校名称/学院名称/专业名称/学制等信息 4，请填写与学信网信息一致的教育经历信息，每段教育经历只填写一所学校 5，中国科学院各研究所毕业生请按要求规范填写，如中国科学院大学 微电子研究所 学校名称：中国科学院大学 学院名称：微电子研究所
+            - generic [ref=e586]:
+              - generic [ref=e592]:
+                - generic [ref=e593]:
+                  - generic [ref=e595]:
+                    - generic [ref=e596]: "* 学校名称"
+                    - textbox "请输入" [ref=e605]
+                  - generic [ref=e607]:
+                    - generic [ref=e608]: "* 专业名称"
+                    - textbox "请输入" [ref=e612]
+                - generic [ref=e613]:
+                  - generic [ref=e615]:
+                    - generic [ref=e616]: "* 学历"
+                    - generic [ref=e623] [cursor=pointer]:
+                      - generic [ref=e625]: 请选择
+                      - list [ref=e626]:
+                        - listitem [ref=e627]:
+                          - textbox [ref=e628]
+                  - generic [ref=e635]:
+                    - generic [ref=e636]: "* X年学制(成绩单或学籍上)"
+                    - generic [ref=e639]:
+                      - generic [ref=e640]: 1年
+                      - generic [ref=e647]: 1.5年
+                      - generic [ref=e654]: 2年
+                      - generic [ref=e661]: 2.5年
+                      - generic [ref=e668]: 3年
+                      - generic [ref=e675]: 4年
+                      - generic [ref=e682]: 5年
+                      - generic [ref=e689]: 大于5年
+                - generic [ref=e696]:
+                  - generic [ref=e698]:
+                    - generic [ref=e699]: "* 开始时间"
+                    - generic [ref=e706] [cursor=pointer]:
+                      - generic [ref=e707]: 请选择
+                      - list [ref=e708]:
+                        - listitem [ref=e709]:
+                          - textbox [ref=e710]
+                  - generic [ref=e715]:
+                    - generic [ref=e716]: "* 结束时间"
+                    - generic [ref=e723] [cursor=pointer]:
+                      - generic [ref=e724]: 请选择
+                      - list [ref=e725]:
+                        - listitem [ref=e726]:
+                          - textbox [ref=e727]
+                - generic [ref=e731]:
+                  - generic [ref=e733]:
+                    - generic [ref=e734]: "* 学院名称"
+                    - textbox "请输入" [ref=e738]
+                  - generic [ref=e740]:
+                    - generic [ref=e741]: "* 该学历是否您的最高学历？Highest education or not"
+                    - generic [ref=e744]:
+                      - generic [ref=e745]: 是
+                      - generic [ref=e752]: 否
+                - generic [ref=e761]:
+                  - generic [ref=e762]: "* 学习方式Education Type"
+                  - generic [ref=e769] [cursor=pointer]:
+                    - generic [ref=e771]: 请选择
+                    - list [ref=e772]:
+                      - listitem [ref=e773]:
+                        - textbox [ref=e774]
+              - generic [ref=e780] [cursor=pointer]: 添加教育经历
+          - generic [ref=e785]:
+            - generic [ref=e786]: 简历附件
+            - generic [ref=e798]:
+              - generic [ref=e799]: "* 简历附件"
+              - generic [ref=e801]: 上传文件
+          - generic [ref=e812]:
+            - generic [ref=e813]: 工作经历
+            - generic [ref=e815]:
+              - generic [ref=e819]:
+                - generic [ref=e821]:
+                  - generic [ref=e822]:
+                    - generic [ref=e824]:
+                      - generic [ref=e825]: 公司名称
+                      - textbox "请输入" [ref=e829]
+                    - generic [ref=e831]:
+                      - generic [ref=e832]: 职位名称
+                      - textbox "请输入" [ref=e836]
+                  - generic [ref=e837]:
+                    - generic [ref=e839]:
+                      - generic [ref=e840]: 开始时间
+                      - generic [ref=e847] [cursor=pointer]:
+                        - generic [ref=e848]: 请选择
+                        - list [ref=e849]:
+                          - listitem [ref=e850]:
+                            - textbox [ref=e851]
+                    - generic [ref=e856]:
+                      - generic [ref=e858]:
+                        - generic [ref=e859]: 结束时间
+                        - generic [ref=e866] [cursor=pointer]:
+                          - generic [ref=e867]: 请选择
+                          - list [ref=e868]:
+                            - listitem [ref=e869]:
+                              - textbox [ref=e870]
+                      - generic [ref=e875] [cursor=pointer]:
+                        - checkbox [ref=e877]
+                        - generic [ref=e879]: 至今
+                  - generic [ref=e880]:
+                    - generic [ref=e882]:
+                      - generic [ref=e883]: 部门
+                      - textbox "请输入" [ref=e887]
+                    - generic [ref=e889]:
+                      - generic [ref=e890]: 证明人姓名
+                      - textbox "请输入" [ref=e894]
+                  - generic [ref=e897]:
+                    - generic [ref=e898]: 证明人职位
+                    - textbox "请输入" [ref=e902]
+                - generic [ref=e906]:
+                  - generic [ref=e907]: 工作职责
+                  - generic [ref=e910]:
+                    - textbox "请输入" [ref=e911]
+                    - generic [ref=e912]: 0/2000
+              - generic [ref=e918] [cursor=pointer]: 添加工作经历
+          - generic [ref=e923]:
+            - generic [ref=e924]: 项目经历
+            - generic [ref=e926]:
+              - generic [ref=e930]:
+                - generic [ref=e932]:
+                  - generic [ref=e933]:
+                    - generic [ref=e935]:
+                      - generic [ref=e936]: 项目名称
+                      - textbox "请输入" [ref=e940]
+                    - generic [ref=e942]:
+                      - generic [ref=e943]: 职务
+                      - textbox "请输入" [ref=e947]
+                  - generic [ref=e948]:
+                    - generic [ref=e950]:
+                      - generic [ref=e951]: 开始时间
+                      - generic [ref=e958] [cursor=pointer]:
+                        - generic [ref=e959]: 请选择
+                        - list [ref=e960]:
+                          - listitem [ref=e961]:
+                            - textbox [ref=e962]
+                    - generic [ref=e967]:
+                      - generic [ref=e969]:
+                        - generic [ref=e970]: 结束时间
+                        - generic [ref=e977] [cursor=pointer]:
+                          - generic [ref=e978]: 请选择
+                          - list [ref=e979]:
+                            - listitem [ref=e980]:
+                              - textbox [ref=e981]
+                      - generic [ref=e986] [cursor=pointer]:
+                        - checkbox [ref=e988]
+                        - generic [ref=e990]: 至今
+                - generic [ref=e994]:
+                  - generic [ref=e995]: 项目描述
+                  - generic [ref=e998]:
+                    - textbox "请输入" [ref=e999]
+                    - generic [ref=e1000]: 0/2000
+              - generic [ref=e1006] [cursor=pointer]: 添加项目经历
+          - generic [ref=e1011]:
+            - generic [ref=e1012]: 论文/专著
+            - generic [ref=e1014]:
+              - generic [ref=e1020]:
+                - generic [ref=e1021]:
+                  - generic [ref=e1023]:
+                    - generic [ref=e1024]: 名称
+                    - textbox "请输入" [ref=e1028]
+                  - generic [ref=e1030]:
+                    - generic [ref=e1031]: 发布时间
+                    - generic [ref=e1038] [cursor=pointer]:
+                      - generic [ref=e1039]: 请选择
+                      - list [ref=e1040]:
+                        - listitem [ref=e1041]:
+                          - textbox [ref=e1042]
+                - generic [ref=e1046]:
+                  - generic [ref=e1048]:
+                    - generic [ref=e1049]: 所属期刊
+                    - textbox "请输入" [ref=e1053]
+                  - generic [ref=e1055]:
+                    - generic [ref=e1056]: 作者顺序
+                    - textbox "请输入" [ref=e1060]
+                - generic [ref=e1061]:
+                  - generic [ref=e1063]:
+                    - generic [ref=e1064]: 年度/期次
+                    - textbox "请输入" [ref=e1068]
+                  - generic [ref=e1070]:
+                    - generic [ref=e1071]: 影响因子
+                    - generic [ref=e1074]:
+                      - textbox "请输入" [ref=e1075]
+                      - generic [ref=e1076]: 0/32766
+                - generic [ref=e1084]:
+                  - generic [ref=e1085]: 期刊类型
+                  - generic [ref=e1088]:
+                    - textbox "请输入" [ref=e1089]
+                    - generic [ref=e1090]: 0/32766
+              - generic [ref=e1096] [cursor=pointer]: 添加论文/专著
+          - generic [ref=e1101]:
+            - generic [ref=e1102]: 获奖情况
+            - generic [ref=e1104]:
+              - generic [ref=e1110]:
+                - generic [ref=e1111]:
+                  - generic [ref=e1113]:
+                    - generic [ref=e1114]: 获奖项
+                    - textbox "请输入" [ref=e1118]
+                  - generic [ref=e1120]:
+                    - generic [ref=e1121]: 获奖时间
+                    - generic [ref=e1128] [cursor=pointer]:
+                      - generic [ref=e1129]: 请选择
+                      - list [ref=e1130]:
+                        - listitem [ref=e1131]:
+                          - textbox [ref=e1132]
+                - generic [ref=e1136]:
+                  - generic [ref=e1138]:
+                    - generic [ref=e1139]: 奖项授予单位
+                    - generic [ref=e1142]:
+                      - textbox "请输入" [ref=e1143]
+                      - generic [ref=e1144]: 0/32766
+                  - generic [ref=e1151]:
+                    - generic [ref=e1152]: 奖项评选比例
+                    - generic [ref=e1155]:
+                      - textbox "请输入" [ref=e1156]
+                      - generic [ref=e1157]: 0/32766
+              - generic [ref=e1163] [cursor=pointer]: 添加获奖情况
+          - generic [ref=e1168]:
+            - generic [ref=e1169]: 实习经历
+            - generic [ref=e1171]:
+              - generic [ref=e1175]:
+                - generic [ref=e1177]:
+                  - generic [ref=e1178]:
+                    - generic [ref=e1180]:
+                      - generic [ref=e1181]: 单位名称
+                      - textbox "请输入" [ref=e1185]
+                    - generic [ref=e1187]:
+                      - generic [ref=e1188]: 职位名称
+                      - textbox "请输入" [ref=e1192]
+                  - generic [ref=e1193]:
+                    - generic [ref=e1195]:
+                      - generic [ref=e1196]: 开始时间
+                      - generic [ref=e1203] [cursor=pointer]:
+                        - generic [ref=e1204]: 请选择
+                        - list [ref=e1205]:
+                          - listitem [ref=e1206]:
+                            - textbox [ref=e1207]
+                    - generic [ref=e1212]:
+                      - generic [ref=e1214]:
+                        - generic [ref=e1215]: 结束时间
+                        - generic [ref=e1222] [cursor=pointer]:
+                          - generic [ref=e1223]: 请选择
+                          - list [ref=e1224]:
+                            - listitem [ref=e1225]:
+                              - textbox [ref=e1226]
+                      - generic [ref=e1231] [cursor=pointer]:
+                        - checkbox [ref=e1233]
+                        - generic [ref=e1235]: 至今
+                  - generic [ref=e1236]:
+                    - generic [ref=e1238]:
+                      - generic [ref=e1239]: 证明人联系方式
+                      - textbox "请输入" [ref=e1243]
+                    - generic [ref=e1245]:
+                      - generic [ref=e1246]: 证明人关系
+                      - textbox "请输入" [ref=e1250]
+                  - generic [ref=e1253]:
+                    - generic [ref=e1254]: 所在部门
+                    - textbox "请输入" [ref=e1258]
+                - generic [ref=e1262]:
+                  - generic [ref=e1263]: 实习内容
+                  - generic [ref=e1266]:
+                    - textbox "请输入" [ref=e1267]
+                    - generic [ref=e1268]: 0/2000
+              - generic [ref=e1274] [cursor=pointer]: 添加实习经历
+          - generic [ref=e1279]:
+            - generic [ref=e1280]: 附加信息
+            - generic [ref=e1282]:
+              - generic [ref=e1288]:
+                - generic [ref=e1289]:
+                  - generic [ref=e1291]:
+                    - generic [ref=e1292]: 专利名称
+                    - textbox "请输入" [ref=e1296]
+                  - generic [ref=e1298]:
+                    - generic [ref=e1299]: 专利号
+                    - textbox "请输入" [ref=e1303]
+                - generic [ref=e1304]:
+                  - generic [ref=e1306]:
+                    - generic [ref=e1307]: 发明人
+                    - textbox "请输入" [ref=e1311]
+                  - generic [ref=e1313]:
+                    - generic [ref=e1314]: 发明人次序
+                    - generic [ref=e1317]:
+                      - textbox "请输入" [ref=e1318]
+                      - generic [ref=e1319]: 0/32766
+                - generic [ref=e1325]:
+                  - generic [ref=e1327]:
+                    - generic [ref=e1328]: 专利权人
+                    - textbox "请输入" [ref=e1332]
+                  - generic [ref=e1334]:
+                    - generic [ref=e1335]: 授权日期
+                    - generic [ref=e1342] [cursor=pointer]:
+                      - generic [ref=e1343]: 请选择
+                      - list [ref=e1344]:
+                        - listitem [ref=e1345]:
+                          - textbox [ref=e1346]
+              - generic [ref=e1350] [cursor=pointer]: 添加附加信息
+          - generic [ref=e1355]:
+            - generic [ref=e1356]: 附加问题
+            - generic [ref=e1364]:
+              - generic [ref=e1365]:
+                - generic [ref=e1367]:
+                  - generic [ref=e1368]: 是否有色弱色盲、呼吸疾病（如哮喘）可能无法正常工作或对其他员工构成威胁的生理、精神疾病或职业禁忌症？
+                  - generic [ref=e1373]:
+                    - generic [ref=e1374]: 是
+                    - generic [ref=e1381]: 否
+                - generic [ref=e1389]:
+                  - generic [ref=e1390]: 如有职业禁忌症，请详细说明：
+                  - generic [ref=e1393]:
+                    - textbox "请输入" [ref=e1394]
+                    - generic [ref=e1395]: 0/32766
+              - generic [ref=e1401]:
+                - generic [ref=e1403]:
+                  - generic [ref=e1404]: 您是否有行政处罚记录、曾被追究过刑事责任,或被人民法院列为失信被执人名单？
+                  - generic [ref=e1409]:
+                    - generic [ref=e1410]: 是
+                    - generic [ref=e1417]: 否
+                - generic [ref=e1425]:
+                  - generic [ref=e1426]: 如有相关处罚记录，请详细说明
+                  - generic [ref=e1429]:
+                    - textbox "请输入" [ref=e1430]
+                    - generic [ref=e1431]: 0/32766
+              - generic [ref=e1437]:
+                - generic [ref=e1439]:
+                  - generic [ref=e1440]: 您是否曾有经历过重大手术，或患有重大身体、精神疾病（包括已治愈），或目前正在进行相关慢性疾病的治疗？
+                  - generic [ref=e1445]:
+                    - generic [ref=e1446]: 是
+                    - generic [ref=e1453]: 否
+                - generic [ref=e1461]:
+                  - generic [ref=e1462]: 如有重大疾病相关情况，请详细说明：
+                  - generic [ref=e1465]:
+                    - textbox "请输入" [ref=e1466]
+                    - generic [ref=e1467]: 0/32766
+              - generic [ref=e1473]:
+                - generic [ref=e1475]:
+                  - generic [ref=e1476]: 您是否有直系亲属、近亲属，或与您共同生活或财务上有依赖关系的人在长鑫存储及利益相关方的情况？
+                  - generic [ref=e1481]:
+                    - generic [ref=e1482]: 是
+                    - generic [ref=e1489]: 否
+                - generic [ref=e1497]:
+                  - generic [ref=e1498]: 如有近亲属在长鑫存储或利益相关方工作，请写下他/她的名字，关系及工作单位
+                  - generic [ref=e1501]:
+                    - textbox "请输入" [ref=e1502]
+                    - generic [ref=e1503]: 0/32766
+              - generic [ref=e1509]:
+                - generic [ref=e1511]:
+                  - generic [ref=e1512]: 您是否现仍在长鑫存储及其关联公司，或兼职、任职及其他各种形式劳动关系的情况?
+                  - generic [ref=e1517]:
+                    - generic [ref=e1518]: 是
+                    - generic [ref=e1525]: 否
+                - generic [ref=e1533]:
+                  - generic [ref=e1534]: 如有其它相关任职记录，请详细说明：
+                  - generic [ref=e1537]:
+                    - textbox "请输入" [ref=e1538]
+                    - generic [ref=e1539]: 0/32766
+              - generic [ref=e1545]:
+                - generic [ref=e1547]:
+                  - generic [ref=e1548]: 您是否自行经营公司/个体工商户，或在其他企业/机构担任职务、向其提供劳务或其他服务？
+                  - generic [ref=e1553]:
+                    - generic [ref=e1554]: 是
+                    - generic [ref=e1561]: 否
+                - generic [ref=e1569]:
+                  - generic [ref=e1570]: 您的关联人是否在长鑫集团或关联公司担任职务、提供劳务或其他服务？
+                  - generic [ref=e1574]:
+                    - generic [ref=e1575]:
+                      - generic [ref=e1576]: 是
+                      - generic [ref=e1583]: 否
+                    - generic [ref=e1590]: ”关联人“包括： （一）家庭成员。指候选人的配偶，以及双方的近亲属（一般是指父母、子女、兄弟姐妹、祖父母、外祖父母、孙子女、外孙子女）。 （二）利害关系人。指与候选人存在利害关系的个人，包括：（1）与候选人存在共同经济利益的个人，如财务担保、合作经营等；（2）亲戚、恋爱等重要私人关系，或来自厂商或客户的前员工因工作关系产生接触，可能对未来履职造成不当影响的个人。
+              - generic [ref=e1591]:
+                - generic [ref=e1593]:
+                  - generic [ref=e1594]: 您与关联人是否从长鑫的利益相关方、竞争对手处获得贷款/个人债务担保，或存在其他业务合作及财务往来？
+                  - generic [ref=e1599]:
+                    - generic [ref=e1600]: 是
+                    - generic [ref=e1607]: 否
+                - generic [ref=e1615]:
+                  - generic [ref=e1616]: 您与关联人是否在长鑫集团的利益相关方（如客户、供应商等）任职、提供劳务或其他服务？
+                  - generic [ref=e1621]:
+                    - generic [ref=e1622]: 是
+                    - generic [ref=e1629]: 否
+              - generic [ref=e1636]:
+                - generic [ref=e1638]:
+                  - generic [ref=e1639]: 您与关联人是否直接/间接持有长鑫的利益相关方、竞争对手的股份（公开市场购买除外），或其他财产性权益？
+                  - generic [ref=e1644]:
+                    - generic [ref=e1645]: 是
+                    - generic [ref=e1652]: 否
+                - generic [ref=e1660]:
+                  - generic [ref=e1661]: 您与关联人是否自行设立/与第三人共同设立与公司存在竞争关系的企业，或在其中任职、为其提供劳务等服务？
+                  - generic [ref=e1666]:
+                    - generic [ref=e1667]: 是
+                    - generic [ref=e1674]: 否
+          - generic [ref=e1681]:
+            - generic [ref=e1682]: 公司及应聘者声明
+            - generic [ref=e1685]:
+              - checkbox [ref=e1689] [cursor=pointer]
+              - generic [ref=e1691] [cursor=pointer]: 长鑫存储 声明： 公司始终遵循国家、地方政府及行业通用规则执行招聘、录用及员工晋升。我们致力于以平等、公平为原则的对待每一位求职者及员工，绝不因种族、民族、宗教、地域、国籍、社会阶层、政治面貌、性别、年龄、身体能力的不同做出歧视性决定或行为。同时，公司坚决禁止使用童工，也绝不向求职者收取任何招聘或其他非法费用。 以上信息的收集、储存、使用仅用于招聘、办理入职等人力资源管理之目的，包括但不限于为评估本人是否符合应聘岗位的职责能力要求及开展背景调查需要等。 公司高度重视保护第三方知识产权，严禁在招聘、录用等过程中，未经第三方同意或授权，非法获取、披露、使用或允许他人使用第三方商业秘密。 CXMT Statement： CXMT implements action regarding recruitment, offer and promotion adhering to the policy and rules of central government, local government and industry. We dedicate to treat every candidate and employee with the principle of equal & equity, will never have the discrimination decision or behavior according to race, ethnicity, religion, geographical location, nationality, social class, political affiliation, gender, age, or physical ability. In the meanwhile, CXMT prohibits to recruit child labor, and do not charge any recruitment fee or other illegality fee to candidates. The collection, storage and use of the above information will only be used for recruitment, on-boarding and other human resource management purposes, including but not limited to the purpose of assessing whether applicant is qualified for the job and carrying out due diligence. CXMT places a high priority on protecting third-party intellectual property rights and strictly prohibits the unauthorized acquisition, disclosure, or use of third-party trade secrets—or permitting others to do so—during recruitment, hiring, and other related processes without the third party’s consent or authorization. “长鑫存储”指长鑫科技集团股份有限公司及其各级子公司、实际控制主体，包括不限于长鑫科技集团股份有限公司、长鑫存储技术有限公司、长鑫新桥存储技术有限公司、长鑫存储产品（合肥）有限公司、合肥长鑫科技服务有限公司、长鑫存储科技（合肥）有限公司、北京久芯科技有限公司、长鑫集电（北京）存储技术有限公司、长鑫集电科技（北京）有限公司、长鑫集电半导体（北京）有限公司、长鑫芯瑞存储技术（北京）有限公司、长鑫深芯科技（深圳）有限公司、长鑫闵科存储技术（上海）有限公司、长鑫存储技术（西安）有限公司、长鑫存储技术（香港）有限公司、ChangXin Memory Technologiesジャパン株式会社、安徽启航鑫睿私募基金管理有限公司、长鑫汇芯贸易（北京）有限公司、长鑫汇芯贸易（合肥）有限公司、长鑫芯聚股权投资（安徽）有限公司、长鑫芯元股权投资（安徽）有限公司及前述主体不时设立和/或控制的子公司等。 "CXMT" means CXMT Corporation and its subsidiaries and actually controlled entities at all levels, includes but not limited to CXMT Corporation, ChangXin Memory Technologies, Inc., Changxin Xinqiao Memory Technologies, Inc., ChangXin Memory Products (Hefei)Co.Ltd, Hefei Changxin Technology Service Co., Ltd., Changxin Memory (Hefei) Technology Co., Ltd, Beijing Jiuxin Technologies Co., Ltd., Changxin Jidian (Beijing) Memory Technologies Co., Ltd, Changxin Jidian Technologies (Beijing) Co., Ltd, Changxin Jidian Semiconductor (Beijing) Co., Ltd, Changxin Xinrui Memory Technologies (Beijing) Co., Ltd, Changxin ShenXin Technology (Shenzhen) Co.,Ltd, Changxin MinKe Memory Technology (Shanghai) Co.,Ltd, Changxin Memory Technology (Xi'an) Co., Ltd, Changxin Memory Technology (Hong Kong) Limited, ChangXin Memory Technologies (Japan) Inc., Anhui Qihang Xinrui Investment Management Co.,Ltd., Changxin HuiXin Trading (Beijing) Co., Ltd., Changxin HuiXin Trading (Hefei) Co., Ltd., Changxin XinJu Equity Investment (Anhui) Co., Ltd., Changxin XinYuan Equity Investment (Anhui) Co., Ltd. and subsidiaries established and/or controlled by such entities from time to time.
+            - generic [ref=e1693]:
+              - checkbox [ref=e1697] [cursor=pointer]
+              - generic [ref=e1699] [cursor=pointer]: "应聘者个人声明： 本人充分知悉《长鑫科技招聘隐私政策》等个人信息处理相关文件内容，同意公司按照上述目的、方式和范围收集、储存、使用以上信息。若本人未能提供公司所需的信息、资料，公司将无法处理有关工作申请，本人保证在工作申请或简历中所填写的内容完全真实完整。若因我提供虚假陈述、不实的表达或误导信息，或遗漏信息，公司有权立即取消聘用决定或解除劳动合同。 本人保证未实施且入职公司后也不会实施任何违法犯罪行为，或其他损害任何第三方合法权益的行为，包括但不限于未经第三方同意或授权，非法获取、披露、使用或允许他人使用前雇主或其他第三方商业秘密的行为。 本人同意授权公司或公司委托的第三方，调查本人在该工作申请表或简历中所陈述的全部内容。 Employee Applicant's Personal Statement : I fully understand and expressly agree to the contents of documents related to the processing of personal information, such as the CXMT Recruitment Privacy Policy, and consent to CXMT collecting, storing, and using the aforementioned information in accordance with the purposes, methods, and scope described therein. If I fail to provide the information and materials required by CXMT, CXMT will be unable to process my job application. I guarantee that the information provided in this job application form or resume is completely true and complete. I fully understand that if I provide false statements, omissions, inaccurate representations, or misleading information, or fail to disclose required information, CXMT reserves the right to immediately revoke the offer of employment or terminate the employment contract . I undertake that I have not engaged in, and will not engage in after joining CXMT, any acts that may violate relevant laws or regulations, constitute criminal offenses, or otherwise harm the legitimate rights and interests of my former employer or any third party. This includes, but is not limited to, acts of illegally obtaining, disclosing, using, or permitting others to use trade secrets of my former employer or other third parties without the consent or authorization of such third parties. I agree to authorize CXMT or a third party commissioned by CXMT to investigate all statements made by me in this job application form or resume."
+        - generic [ref=e1702]:
+          - generic [ref=e1703] [cursor=pointer]: 上传简历
+          - generic [ref=e1705] [cursor=pointer]: 投递意向
+          - generic [ref=e1707] [cursor=pointer]: 个人信息
+          - generic [ref=e1709] [cursor=pointer]: 附件
+          - generic [ref=e1711] [cursor=pointer]: 求职意向
+          - generic [ref=e1713] [cursor=pointer]: 教育经历
+          - generic [ref=e1715] [cursor=pointer]: 简历附件
+          - generic [ref=e1717] [cursor=pointer]: 工作经历
+          - generic [ref=e1719] [cursor=pointer]: 项目经历
+          - generic [ref=e1721] [cursor=pointer]: 论文/专著
+          - generic [ref=e1723] [cursor=pointer]: 获奖情况
+          - generic [ref=e1725] [cursor=pointer]: 实习经历
+          - generic [ref=e1727] [cursor=pointer]: 附加信息
+          - generic [ref=e1729] [cursor=pointer]: 附加问题
+      - generic [ref=e1733]:
+        - button "暂存" [ref=e1734] [cursor=pointer]
+        - button "取消" [ref=e1735] [cursor=pointer]
+        - button "预览并提交" [ref=e1736] [cursor=pointer]
+      - generic [ref=e56]:
+        - text: ©2026 长鑫存储技术有限公司｜
+        - link "皖ICP备19003801号-2" [ref=e57] [cursor=pointer]:
+          - /url: https://beian.miit.gov.cn/#/Integrated/index
+        - img "公安" [ref=e58]
+        - link "京公网安备 11010802020454号" [ref=e59] [cursor=pointer]:
+          - /url: https://www.beian.gov.cn/portal/registerSystemInfo?recordcode=11010802020454
+        - text: ｜
+        - link "隐私政策" [ref=e60] [cursor=pointer]:
+          - /url: /privacy
+        - text: Powered by Beisen
+  - list [ref=e1741]:
+    - generic [ref=e1745]:
+      - listitem [ref=e1746] [cursor=pointer]:
+        - generic [ref=e1747]: 是
+      - listitem [ref=e1749] [cursor=pointer]:
+        - generic [ref=e1750]: 否
+```
+### Events
+- New console entries: .playwright-mcp\console-2026-08-23T08-39-04-441Z.log#L3-L10

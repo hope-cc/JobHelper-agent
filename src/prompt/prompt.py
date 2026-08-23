@@ -21,9 +21,9 @@ SubmitFlow = """\
   4. 再次调用 browser_snapshot，找出仍未填写的输入框/下拉框。
   5. 调用 getPersonalInfo 获取用户预定义的个人信息（敏感字段显示为 ***）。
   6. 调用 browser_fill_form，根据个人信息填写剩余的输入框。
-  7. 识别非标准下拉框：调用 browser_probe_dropdowns（无需传参，返回未填写的下拉框清单及其 ref/标签）。
-  8. 再调用browser_fill_dropdowns传入根据个人信息决定的值完成非标准下拉框填写。
-- 整个流程中不得把个人敏感信息的真实值写入对话文本，敏感值由后台替换填写。"""
+  7. 识别非标准下拉框：调用 browser_probe_dropdowns（无需传参）。工具会逐个展开未填写的下拉框，返回每个下拉框的 ref、标签和可用选项清单（选项为纯文本，不含无关内容）。
+  8. 逐个下拉框根据标签与选项清单、结合个人信息确定应选值，再调用 browser_fill_dropdowns 传入 [{ref, data_key 或 value}, ...] 完成非标准下拉框填写；工具会自适应点选/输入过滤/回车等不同交互形态。
+- 整个投递流程中不得把个人敏感信息的真实值写入对话文本，敏感值由工具后台替换填写，对话中敏感字段一律显示为 ***。"""
 
 # 投递流程：某工具执行完后，下一步该做什么的提醒文本（用于阻止 agent 提前停止）。
 # browser_navigate / browser_snapshot 在进入流程（出现上传/个人信息等专属工具）后才注入，
@@ -33,8 +33,8 @@ _SUBMIT_FLOW_NEXT = {
     "browser_snapshot": "下一步：继续投递流程——先确认是否还有未填写的输入框/下拉框，随后依次 getPersonalInfo → browser_fill_form → browser_probe_dropdowns → browser_fill_dropdowns 完成填写，全部完成前不要停止。",
     "browser_upload_resume": "简历已上传。下一步：再次调用 browser_snapshot，找出仍未填写的输入框/下拉框。",
     "getPersonalInfo": "下一步：调用 browser_fill_form，根据个人信息填写剩余的输入框。",
-    "browser_fill_form": "下一步：识别非标准下拉框，调用 browser_probe_dropdowns 返回未填写的下拉框清单。",
-    "browser_probe_dropdowns": "下一步：根据个人信息/用户偏好决定每个下拉框应选的值，调用 browser_fill_dropdowns 传入 [{ref, data_key 或 value}, ...] 完成填写。",
+    "browser_fill_form": "下一步：识别非标准下拉框，调用 browser_probe_dropdowns（无需传参）逐个展开未填写的下拉框，返回每个下拉框的 ref、标签和选项清单。",
+    "browser_probe_dropdowns": "下一步：根据每个下拉框的标签与选项清单、结合个人信息/用户偏好决定应选值，调用 browser_fill_dropdowns 传入 [{ref, data_key 或 value}, ...] 完成填写。",
     "browser_fill_dropdowns": "投递表单填写完成，向用户汇报已填/未匹配的字段。",
 }
 

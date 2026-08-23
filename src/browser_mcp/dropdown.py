@@ -406,3 +406,317 @@ async def select_by_text(value: str) -> tuple[bool, str]:
     if ok:
         return True, msg
     return await click_option_by_js(value)
+
+
+# ============================================================
+# 弹出弹层模型：多数站点将展开的选项渲染在 DOM 末尾（Portal 结构），
+# 与下拉框触发元素不在同一条子树上。因此展开后取「全局快照」，从快照的
+# 缩进树中定位弹层节点，再从弹层中提取可选项。
+# ============================================================
+
+# 选项文本行：`generic/listitem/button [..] [cursor=pointer]: 文本`（圆点/搜索/干扰项均无此形态）
+_OPTION_ROW_RE = re.compile(r"^generic\b.*\[cursor=pointer\]\s*:\s*(.+)$")
+# listitem/option 等其它角色：`listitem [ref=x] [cursor=pointer]: 文本` 或无内联文本
+_LISTITEM_ROW_RE = re.compile(r"^listitem\b.*\[cursor=pointer\]\s*(?:[:：]\s*(.+))?$")
+
+
+def _popup_inline_name(content: str) -> str:
+    """取 generic/button/link 行的内联名：`generic [ref=x]: 确定` → 确定；带引号名同理。"""
+    if not content.startswith(("generic", "button", "link")):
+        return ""
+    if ": " in content:
+        return _strip_quotes(content.split(": ", 1)[1].strip())
+    m = re.search(r'"((?:[^"\\]|\\.)*)"', content)
+    return _strip_quotes(m.group(1)) if m else ""
+
+
+def _is_circle(content: str) -> bool:
+    """generic [cursor=pointer] 且无冒号文本 → 行前的圆圈（选中标记）。"""
+    return content.startswith("generic") and "[cursor=pointer]" in content and ":" not in content
+
+
+def _row_text_node(node: dict) -> str:
+    """取选项行的文本：优先行内 `: 文本`，其次子节点中的 generic/text 文本。
+
+    listitem 形态的行文本通常不在行本身，而在其子节点：
+        listitem [ref=e1746] [cursor=pointer]:
+          - generic [ref=e1747]: 是
+    """
+    m = _OPTION_ROW_RE.match(node["content"])
+    if m and m.group(1).strip():
+        return _strip_quotes(m.group(1).strip())
+    m2 = _LISTITEM_ROW_RE.match(node["content"])
+    if m2 and m2.group(1) and m2.group(1).strip():
+        return _strip_quotes(m2.group(1).strip())
+    for c in node["children"]:
+        m = _GENERIC_TEXT_RE.match(c["content"])
+        if m and m.group(1).strip():
+            return _strip_quotes(m.group(1).strip())
+        m = re.match(r"^text:\s*(.+)$", c["content"])
+        if m and m.group(1).strip():
+            return _strip_quotes(m.group(1).strip())
+    return ""
+
+
+def _option_rows(node: dict) -> list[dict]:
+    """递归收集节点子树中的选项行：{text, ref, circle_ref}。
+
+    兼容两类形态：
+    - `generic [..] [cursor=pointer]: 文本`（zhiye 省市区弹层，圆点+文本兄弟节点）；
+    - `listitem [..] [cursor=pointer]`（文本在子代，如「是/否」列表弹层）。
+    """
+    rows: list[dict] = []
+
+    def walk(n: dict, parent: dict | None) -> None:
+        for c in n["children"]:
+            is_generic = c["content"].startswith("generic")
+            is_listitem = c["content"].startswith("listitem")
+            if is_generic or is_listitem:
+                if "[cursor=pointer]" in c["content"]:
+                    text = _row_text_node(c)
+                    if text:
+                        circle = ""
+                        if parent:
+                            siblings = parent["children"]
+                            idx = siblings.index(c)
+                            for sib in reversed(siblings[:idx]):
+                                if _is_circle(sib["content"]):
+                                    circle = sib["ref"] or ""
+                                    break
+                        rows.append({"text": text, "ref": c["ref"] or "", "circle_ref": circle})
+            walk(c, c)
+
+    walk(node, None)
+    return rows
+
+
+def popup_options(popup: dict) -> list[dict]:
+    """从弹层提取选项 [{text, ref, circle_ref}]，按文本去重。"""
+    seen: set[str] = set()
+    out: list[dict] = []
+    for r in _option_rows(popup):
+        if r["text"] in seen:
+            continue
+        seen.add(r["text"])
+        out.append(r)
+    return out
+
+
+def popup_option_texts(popup: dict) -> list[str]:
+    """弹层选项的纯文本列表（供 LLM 展示）。"""
+    return [o["text"] for o in popup_options(popup)]
+
+
+# 可能承载弹层的顶层块角色：generic 与 list/listbox 等列表角色
+_BLOCK_ROLES = ("generic", "list", "listbox", "menu", "dialog")
+
+
+def _top_generic_blocks(node: dict) -> list[dict]:
+    """沿「唯一子块」链下钻，返回第一个含 ≥2 个子块层级的块列表（不限于 generic）。"""
+    nodes = [c for c in node["children"] if c["content"].split(" ", 1)[0] in _BLOCK_ROLES]
+    if len(nodes) == 1:
+        return _top_generic_blocks(nodes[0])
+    return nodes
+
+
+def _subtree_contains_ref(node: dict, ref: str) -> bool:
+    """子树内是否出现某 ref（用于排除包含被点击下拉框的页面块）。"""
+    if not ref:
+        return False
+    if node.get("ref") == ref:
+        return True
+    return any(_subtree_contains_ref(c, ref) for c in node["children"])
+
+
+def _subtree_has_search_box(node: dict) -> bool:
+    """子树内是否含「搜索/筛选」语义输入框——弹层搜索框占位名多为 搜索/筛选/search。
+
+    仅当输入框占位名含搜索关键词或带 [active] 焦点标记才算，防止把表单主体的
+    普通输入框（如「请输入」「0/2000」旁边的填空框）误判为弹层搜索框。
+    """
+    stack = [node]
+    while stack:
+        n = stack.pop()
+        content = n["content"]
+        if _leading_role(content) in ("textbox", "searchbox"):
+            name = _accessible_name(content)
+            if "[active]" in content or name and any(
+                k in name for k in ("搜索", "筛选", "search", "filter")
+            ):
+                return True
+        stack.extend(n["children"])
+    return False
+
+
+# 列表类角色是弹层的强信号（页面主体几乎不会是 list/menu/dialog）：
+# 无搜索框、无 expanded_ref 时也应识别为弹层。
+_POPUP_LIST_ROLES = ("list", "listbox", "menu", "dialog")
+
+# 弹层（Portal 挂载到 body 末尾的小容器）节点数上限。
+# 弹层通常只有几个到几十个节点（如「是/否」listbox 6 个节点、省市区列表约上百节点）；
+# 而页面主体动辄几百上千节点。超过该上限的大块不可能是弹层，
+# 可避免无弹层时把页面主体误判为弹层（并杜绝 body 内容泄漏）。
+
+
+def find_popup(snapshot_text: str, expanded_ref: str = "") -> dict | None:
+    """定位已打开的弹出下拉菜单节点。
+
+    解析缩进树，取顶层块列表（不限 generic），按以下规则过滤：
+    1. 顶层块至少 2 个，否则视为无弹层；
+    2. 排除**第一个顶层块**（最外层的主体）；
+    3. 若指定 expanded_ref，再排除**包含该 ref** 的顶层块（若点击的下拉控件在主块内，
+       主体的子树必然包含它——纵使主体里有 `[cursor=pointer]: 文本` 行也不会被当成选项）；
+    4. 在剩余顶层块中（从后往前）依次取：
+       a. 含搜索语义的空格块（如 `textbox "搜索" [active]`——通用弹出常带搜索）；
+       b. 列表角色块（list/listbox/menu/dialog）——「是/否」等简单弹出常是 list，
+          即使无搜索、无 expanded_ref 也应给识别；
+       c. 带 expanded_ref 时最后取含选项行的块（部分 generic 弹出无搜索也无列表角色）。
+    无 expanded_ref 时不允许仅凭「含选项行的普通 generic 块」当弹出层（避免把页面内容当选项）。
+    """
+    root = _parse_tree(snapshot_text)
+    blocks = _top_generic_blocks(root)
+    if len(blocks) < 2:
+        return None
+    excluded = {id(blocks[0])}  # 首个最外层块一律排除
+    for b in blocks[1:]:
+        if _subtree_contains_ref(b, expanded_ref):
+            excluded.add(id(b))
+    candidates = [b for b in blocks[1:] if id(b) not in excluded]
+    if not candidates:
+        return None
+    for b in reversed(candidates):  # 优先带搜索语义输入框的弹层
+        if _subtree_has_search_box(b):
+            return b
+    for b in reversed(candidates):  # 列表角色弹层（无搜索框，如「是/否」list）
+        if _leading_role(b["content"]) in _POPUP_LIST_ROLES:
+            return b
+    if not expanded_ref:  # 无 ref(如 close 校验场景)：不允许只有选项行的普通 generic 主体块冒充弹层
+        return None
+    for b in reversed(candidates):  # 带 ref 时允许只有选项行的 generic 弹层（无搜索框非列表角色）
+        if _option_rows(b):
+            return b
+    return None
+
+
+def popup_filter_ref(popup: dict) -> str:
+    """弹层内过滤/搜索输入框 ref（textbox/searchbox），无则 ""。"""
+    stack = [popup]
+    while stack:
+        n = stack.pop()
+        if n["content"].startswith(("textbox", "searchbox")):
+            return n["ref"] or ""
+        stack.extend(n["children"])
+    return ""
+
+
+def _popup_keyword_ref(popup: dict, keywords: tuple[str, ...]) -> str:
+    """弹层内最后一个名字含关键词之一的 generic/button/link ref，无则 ""。"""
+    found = ""
+
+    def walk(n: dict) -> None:
+        nonlocal found
+        name = _popup_inline_name(n["content"])
+        if name and any(k in name for k in keywords):
+            if n["ref"]:
+                found = n["ref"]
+        for c in n["children"]:
+            walk(c)
+    walk(popup)
+    return found
+
+
+def popup_confirm_ref(popup: dict) -> str:
+    """弹层内「确定/确认」元素 ref，无则 ""。"""
+    return _popup_keyword_ref(popup, ("确定", "确认"))
+
+
+def popup_dismiss_ref(popup: dict) -> str:
+    """弹层内「取消」元素 ref，无则 ""。"""
+    return _popup_keyword_ref(popup, ("取消",))
+
+
+async def _snapshot_global() -> tuple[str, bool]:
+    """全局快照（Portal 弹层可能在 body 末尾）：优先 target=body，失败回退全部。"""
+    text, err = await call_tool("browser_snapshot", {"target": "body"})
+    if err:
+        return await call_tool("browser_snapshot", {})
+    return text, err
+
+
+async def expand_popup(dropdown_ref: str) -> tuple[dict | None, str]:
+    """点击下拉框展开 → 等待 → 全局快照 → 返回 (弹层节点, 错误文本)。
+
+    弹层未出现（非 Portal 结构或点击无效）时返回 (None, 原因)。
+    """
+    text, err = await call_tool("browser_click", {"target": dropdown_ref})
+    if err:
+        return None, f"展开点击失败：{text}"
+    await asyncio.sleep(EXPAND_WAIT_SECONDS)
+    snap, err = await _snapshot_global()
+    if err:
+        return None, f"展开后快照失败：{snap}"
+    popup = find_popup(snap, dropdown_ref)
+    if popup is None:
+        return None, "展开后未在全局快照中定位到弹层（非 Portal 结构或弹层未出现）"
+    return popup, ""
+
+
+async def close_popup(dropdown_ref: str, popup: dict | None = None) -> tuple[str, bool]:
+    """收起弹层（如仍打开）。
+
+    先刷新全局快照判断弹层是否已随操作消失（点击选项常自带收起）：已消失则直接返回，
+    避免对已关闭的下拉框再次点击反而把它重新展开。仍打开时依次：点击原 ref 收起 →
+    失败点弹层「取消」→ 再失败按 Escape。
+    """
+    if popup is not None:
+        snap, err = await _snapshot_global()
+        current = find_popup(snap, dropdown_ref) if not err else None
+        if current is None:
+            return "", False  # 弹层已关闭，无需收起
+        popup = current
+    text, err = await call_tool("browser_click", {"target": dropdown_ref})
+    await asyncio.sleep(COLLAPSE_WAIT_SECONDS)
+    if err and popup is not None:
+        dismiss = popup_dismiss_ref(popup)
+        if dismiss:
+            text, err = await call_tool("browser_click", {"target": dismiss})
+            await asyncio.sleep(COLLAPSE_WAIT_SECONDS)
+    if err:
+        # 兜底：Escape
+        esc, err2 = await call_tool("browser_press_key", {"key": "Escape"})
+        if not err2:
+            text, err = esc, False
+    return text, err
+
+
+def match_option(options: list[dict], value: str) -> dict | None:
+    """在选项中匹配目标值（精确优先，其次包含）。"""
+    for o in options:
+        if o.get("text") == value:
+            return o
+    for o in options:
+        t = o.get("text") or ""
+        if value and value in t:
+            return o
+    return None
+
+
+async def click_option_ref(opt: dict) -> tuple[bool, str]:
+    """点击选项：优先圆圈（circle_ref），失败回退文本 ref。"""
+    circle, text_ref = opt.get("circle_ref") or "", opt.get("ref") or ""
+    for target, label in ((circle, "圆圈"), (text_ref, "选项文本")):
+        if not target:
+            continue
+        res, err = await call_tool("browser_click", {"target": target})
+        if not err:
+            return True, f"已点击选项{label}（{target}）"
+    return False, f"选项无可点击 ref：circle={circle or '空'} text={text_ref or '空'}"
+
+
+async def press_enter() -> tuple[str, bool]:
+    """弹层内按回车（优先 MCP 键盘事件，失败回退 JS）。"""
+    text, err = await call_tool("browser_press_key", {"key": "Enter"})
+    if not err:
+        return text, False
+    code = "async ({ page }) => { await page.keyboard.press('Enter'); }"
+    return await call_tool("browser_run_code_unsafe", {"code": code})
