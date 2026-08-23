@@ -70,11 +70,6 @@ def add_message(conversation_id: str, message: dict) -> None:
     data["messages"].append(message)
     fp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
-def add_system_reminder(conversation_id: str, reminder: str) -> None:
-    """向会话追加系统提醒消息。"""
-    content = f"<system-reminder>\n{reminder}\n</system-reminder>"
-    add_message(conversation_id, {"role": "user", "content": content})
-
 
 def update_title(conversation_id: str, title: str) -> None:
     """更新会话标题。"""
@@ -84,6 +79,41 @@ def update_title(conversation_id: str, title: str) -> None:
     data = json.loads(fp.read_text(encoding="utf-8"))
     data["title"] = title
     fp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+# ---- 投递流程状态 ----
+
+SUBMIT_FLOW_KEY = "submit_flow"
+
+
+def get_submit_flow(conversation_id: str) -> dict | None:
+    """读取会话中持久化的投递流程状态; 无会话或无该字段返回 None。"""
+    conv = get_conversation(conversation_id)
+    if conv is None:
+        return None
+    sf = conv.get(SUBMIT_FLOW_KEY)
+    return sf if isinstance(sf, dict) else None
+
+
+def save_submit_flow(conversation_id: str, state: dict) -> None:
+    """保存投递流程状态到会话 JSON。"""
+    fp = _file_path(conversation_id)
+    if not fp.exists():
+        raise FileNotFoundError(f"会话不存在: {conversation_id}")
+    data = json.loads(fp.read_text(encoding="utf-8"))
+    data[SUBMIT_FLOW_KEY] = state
+    fp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def clear_submit_flow(conversation_id: str) -> None:
+    """清除会话中的投递流程状态字段。"""
+    fp = _file_path(conversation_id)
+    if not fp.exists():
+        return
+    data = json.loads(fp.read_text(encoding="utf-8"))
+    if SUBMIT_FLOW_KEY in data:
+        data.pop(SUBMIT_FLOW_KEY)
+        fp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def delete_conversation(conversation_id: str) -> bool:

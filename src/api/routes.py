@@ -75,6 +75,19 @@ def _format_results_as_reminder(results) -> str:
     return "\n".join(lines)
 
 
+def _persist_submit_flow(conversation_id: str, final_state: dict | None) -> None:
+    """图执行结束后回写投递流程状态。
+
+    - 没有流程、或流程已成完成态 → 清除
+    - 否则将当前流程状态保存回会话，供下一次请求恢复
+    """
+    flow = (final_state or {}).get("submit_flow")
+    if flow and flow.get("current_stage") != "completed":
+        storage.save_submit_flow(conversation_id, flow)
+    else:
+        storage.clear_submit_flow(conversation_id)
+
+
 class SendMessageBody(BaseModel):
     content: str
 
@@ -136,12 +149,15 @@ async def send_message(conversation_id: str, body: SendMessageBody):
 
     client = _get_client()
     registry = _get_registry()
+
+    # 读取已持久化的投递流程状态，恢复 / 续跑
+    submit_flow = storage.get_submit_flow(conversation_id)
+
     graph = build_graph(client, registry, conversation_id=conversation_id)
 
     async def event_generator():
         full_response: list[str] = []
         tool_call_count = 0
-
 
         initial_state: ChatState = {
             "messages": messages,
@@ -149,6 +165,10 @@ async def send_message(conversation_id: str, body: SendMessageBody):
             "tool_calls": [],
             "loop_count": 0,
         }
+        if submit_flow:
+            initial_state["submit_flow"] = submit_flow
+
+        final_state: ChatState | None = None
 
         try:
             async for mode, payload in graph.astream(
@@ -166,13 +186,16 @@ async def send_message(conversation_id: str, body: SendMessageBody):
                         tool_call_count += 1
 
                 elif mode == "values":
-                    pass
+                    final_state = payload
 
             if full_response:
                 storage.add_message(
                     conversation_id,
                     {"role": "assistant", "content": "".join(full_response)},
                 )
+
+            # 投递流程状态写回会话（undone / completed → 清除）
+            _persist_submit_flow(conversation_id, final_state)
 
             api_request_done(conversation_id, len("".join(full_response)), tool_call_count)
 
