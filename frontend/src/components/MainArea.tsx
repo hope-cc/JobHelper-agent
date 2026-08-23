@@ -2,7 +2,7 @@ import { useAppState } from "../AppContext";
 import WelcomeScreen from "./WelcomeScreen";
 import ChatView from "./ChatView";
 import ResumePage from "./ResumePage";
-import PlaceholderPage from "./PlaceholderPage";
+import JobProgressPage from "./JobProgress/JobProgressPage";
 import ProfilePage from "./ProfilePage";
 
 export default function MainArea() {
@@ -30,7 +30,7 @@ export default function MainArea() {
     case "progress":
       return (
         <main className="flex-1 h-full">
-          <PlaceholderPage title="投递进度" />
+          <JobProgressPage />
         </main>
       );
     case "profile":

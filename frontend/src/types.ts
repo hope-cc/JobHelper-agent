@@ -215,3 +215,27 @@ export type SavableProfile = {
   self_evaluation: string;
   masked_basic_fields: string[];
 };
+
+// ========== 投递进度相关类型 ==========
+
+export type JobStatus = "简历已投递" | "评估中" | "Offer" | "已拒绝";
+
+export interface JobRecord {
+  id: string;
+  company: string; // 必填
+  position: string; // 必填
+  applied_at: string; // YYYY-MM-DD
+  status: JobStatus;
+  next_step: string;
+  remark: string; // 可空
+}
+
+/** 新增/编辑提交的载荷（不含 id，服务端生成） */
+export type JobPayload = Omit<JobRecord, "id">;
+
+export const JOB_STATUSES: JobStatus[] = [
+  "简历已投递",
+  "评估中",
+  "Offer",
+  "已拒绝",
+];
