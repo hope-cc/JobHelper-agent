@@ -4,6 +4,7 @@
 所有日志输出到 log/app.log，按大小自动轮转。
 """
 
+import json
 import logging
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
@@ -109,3 +110,9 @@ def api_request_error(rid: str, error: str) -> None:
 def sub_agent_info(rid: str, state:str) -> None:
     """记录子 agent 执行状态。"""
     _logger.info(f"[SUB-AGENT] [STATE] rid={rid} state={state}")
+
+def logger_info(func: str, content : str) -> None:
+    """记录普通信息日志。"""
+    _logger.info(f"[{func}] {content}")
+
+    

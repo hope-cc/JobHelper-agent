@@ -1,74 +1,13 @@
 """脱敏取值与控件判定的单测。"""
 
 from src.browser_mcp.fill import (
-    display_value,
     find_radio_ref,
     is_fillable,
     is_option_el,
     is_upload_candidate,
     match_combobox_value,
     parse_snapshot,
-    resolve_profile_value,
 )
-
-
-def _profile():
-    return {
-        "basic_info": {
-            "name": "张三",
-            "phone": "13800000000",
-            "id_number": "440101199001011234",
-            "gender": "男",
-        },
-        "education": [
-            {"school_name": "清华", "major": "计算机"},
-            {"school_name": "北大", "major": "软件"},
-        ],
-        "self_evaluation": "认真负责",
-        "masked_basic_fields": ["phone", "id_number"],
-    }
-
-
-# ---- resolve_profile_value ----
-
-def test_resolve_basic_info():
-    assert resolve_profile_value(_profile(), "basic_info.name") == "张三"
-
-
-def test_resolve_list_index():
-    assert resolve_profile_value(_profile(), "education[0].school_name") == "清华"
-    assert resolve_profile_value(_profile(), "education[1].major") == "软件"
-
-
-def test_resolve_top_level():
-    assert resolve_profile_value(_profile(), "self_evaluation") == "认真负责"
-
-
-def test_resolve_missing_and_empty():
-    p = _profile()
-    p["basic_info"]["email"] = ""
-    assert resolve_profile_value(p, "basic_info.email") is None
-    assert resolve_profile_value(p, "basic_info.nonexist") is None
-    assert resolve_profile_value(p, "education[5].major") is None
-    assert resolve_profile_value(p, "education[0].gpa") is None
-    assert resolve_profile_value(p, "bad.key") is None
-    assert resolve_profile_value(p, "") is None
-    assert resolve_profile_value(None, "basic_info.name") is None
-
-
-# ---- display_value（脱敏显示）----
-
-def test_display_masks_sensitive():
-    p = _profile()
-    assert display_value("basic_info.phone", "13800000000", p) == "***"
-    assert display_value("basic_info.id_number", "440101199001011234", p) == "***"
-
-
-def test_display_keeps_normal():
-    p = _profile()
-    assert display_value("basic_info.name", "张三", p) == "张三"
-    assert display_value("education[0].school_name", "清华", p) == "清华"
-    assert display_value("self_evaluation", "认真负责", p) == "认真负责"
 
 
 # ---- match_combobox_value ----

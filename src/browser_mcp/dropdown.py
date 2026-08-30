@@ -448,6 +448,8 @@ def _row_text_node(node: dict) -> str:
     m2 = _LISTITEM_ROW_RE.match(node["content"])
     if m2 and m2.group(1) and m2.group(1).strip():
         return _strip_quotes(m2.group(1).strip())
+    if node["content"].startswith("option"):
+        return _accessible_name(node["content"])   # option "男" → "男"
     for c in node["children"]:
         m = _GENERIC_TEXT_RE.match(c["content"])
         if m and m.group(1).strip():
@@ -461,9 +463,10 @@ def _row_text_node(node: dict) -> str:
 def _option_rows(node: dict) -> list[dict]:
     """递归收集节点子树中的选项行：{text, ref, circle_ref}。
 
-    兼容两类形态：
+    兼容三类形态：
     - `generic [..] [cursor=pointer]: 文本`（zhiye 省市区弹层，圆点+文本兄弟节点）；
-    - `listitem [..] [cursor=pointer]`（文本在子代，如「是/否」列表弹层）。
+    - `listitem [..] [cursor=pointer]`（文本在子代，如「是/否」列表弹层）；
+    - `option "男" [ref=..] [cursor=pointer]`（ARIA listbox 弹层，文本在引号名里）。
     """
     rows: list[dict] = []
 
@@ -471,19 +474,19 @@ def _option_rows(node: dict) -> list[dict]:
         for c in n["children"]:
             is_generic = c["content"].startswith("generic")
             is_listitem = c["content"].startswith("listitem")
-            if is_generic or is_listitem:
-                if "[cursor=pointer]" in c["content"]:
-                    text = _row_text_node(c)
-                    if text:
-                        circle = ""
-                        if parent:
-                            siblings = parent["children"]
-                            idx = siblings.index(c)
-                            for sib in reversed(siblings[:idx]):
-                                if _is_circle(sib["content"]):
-                                    circle = sib["ref"] or ""
-                                    break
-                        rows.append({"text": text, "ref": c["ref"] or "", "circle_ref": circle})
+            is_option = c["content"].startswith("option")
+            if (is_generic or is_listitem or is_option) and "[cursor=pointer]" in c["content"]:
+                text = _row_text_node(c)
+                if text:
+                    circle = ""
+                    if parent:
+                        siblings = parent["children"]
+                        idx = siblings.index(c)
+                        for sib in reversed(siblings[:idx]):
+                            if _is_circle(sib["content"]):
+                                circle = sib["ref"] or ""
+                                break
+                    rows.append({"text": text, "ref": c["ref"] or "", "circle_ref": circle})
             walk(c, c)
 
     walk(node, None)
@@ -558,6 +561,21 @@ _POPUP_LIST_ROLES = ("list", "listbox", "menu", "dialog")
 # 可避免无弹层时把页面主体误判为弹层（并杜绝 body 内容泄漏）。
 
 
+def _find_embedded_popup(root: dict) -> dict | None:
+    """整树回退：顶层块扫描落空时，找文档序最靠后的 list/listbox/menu/dialog 节点，
+    其子树含可点选项行即视为弹层（处理弹层深嵌套在页面里的站点，如小米校招）。"""
+    best: dict | None = None
+    stack = [root]
+    while stack:
+        node = stack.pop()
+        for child in reversed(node["children"]):   # 倒序入栈 → 弹出即文档序
+            stack.append(child)
+        role = _leading_role(node["content"])
+        if role in _POPUP_LIST_ROLES and _option_rows(node):
+            best = node   # 文档序靠后的覆盖（弹层通常渲染在靠后位置）
+    return best
+
+
 def find_popup(snapshot_text: str, expanded_ref: str = "") -> dict | None:
     """定位已打开的弹出下拉菜单节点。
 
@@ -572,18 +590,21 @@ def find_popup(snapshot_text: str, expanded_ref: str = "") -> dict | None:
           即使无搜索、无 expanded_ref 也应给识别；
        c. 带 expanded_ref 时最后取含选项行的块（部分 generic 弹出无搜索也无列表角色）。
     无 expanded_ref 时不允许仅凭「含选项行的普通 generic 块」当弹出层（避免把页面内容当选项）。
+
+    以上规则全部落空时，回退到整树查找 `_find_embedded_popup`——弹层若渲染在页面
+    主体深处（而非 body 末尾 Portal），按列表角色 + 可点选项行兜底识别。
     """
     root = _parse_tree(snapshot_text)
     blocks = _top_generic_blocks(root)
     if len(blocks) < 2:
-        return None
+        return _find_embedded_popup(root)
     excluded = {id(blocks[0])}  # 首个最外层块一律排除
     for b in blocks[1:]:
         if _subtree_contains_ref(b, expanded_ref):
             excluded.add(id(b))
     candidates = [b for b in blocks[1:] if id(b) not in excluded]
     if not candidates:
-        return None
+        return _find_embedded_popup(root)
     for b in reversed(candidates):  # 优先带搜索语义输入框的弹层
         if _subtree_has_search_box(b):
             return b
@@ -591,11 +612,11 @@ def find_popup(snapshot_text: str, expanded_ref: str = "") -> dict | None:
         if _leading_role(b["content"]) in _POPUP_LIST_ROLES:
             return b
     if not expanded_ref:  # 无 ref(如 close 校验场景)：不允许只有选项行的普通 generic 主体块冒充弹层
-        return None
+        return _find_embedded_popup(root)
     for b in reversed(candidates):  # 带 ref 时允许只有选项行的 generic 弹层（无搜索框非列表角色）
         if _option_rows(b):
             return b
-    return None
+    return _find_embedded_popup(root)
 
 
 def popup_filter_ref(popup: dict) -> str:

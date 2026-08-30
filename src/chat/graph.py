@@ -238,13 +238,15 @@ def _entry_route(state: ChatState) -> str:
     if not is_active_flow(flow):
         return "chat_node"
     stage = flow.get("current_stage")
-    return _FLOW_STAGE_NODE.get(stage, "chat_node")
+    node = _FLOW_STAGE_NODE.get(stage, "chat_node")
+    return node
 
 
 def _after_tool(state: ChatState) -> str:
     """工具执行后路由：若刚进入投递流程（等待登录）则结束回合；否则继续 ReAct。"""
     flow = state.get("submit_flow")
     if is_active_flow(flow) and flow.get("current_stage") == "waiting_login":
+
         return END
     return "chat_node"
 
@@ -253,8 +255,11 @@ def _flow_continue(node: str):
     """构造流程链路的条件路由：流程仍活跃则进入下个节点，否则结束。"""
 
     def route(state: ChatState) -> str:
-        if is_active_flow(state.get("submit_flow")):
+        flow = state.get("submit_flow")
+        if is_active_flow(flow):
             return node
+        url = (flow or {}).get("job_url", "-")
+        cur = (flow or {}).get("current_stage", "-")
         return END
 
     return route
@@ -276,6 +281,7 @@ def _after_resume_choice(state: ChatState) -> str:
     if not is_active_flow(flow):
         return END
     if flow.get("current_stage") == "waiting_resume_choice":
+
         return END
     return "flow_snapshot_again"
 

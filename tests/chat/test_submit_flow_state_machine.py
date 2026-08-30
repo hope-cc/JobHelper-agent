@@ -11,6 +11,10 @@ import json
 
 import pytest
 
+from src.api import profile_storage
+from src.browser_mcp.types import SubmitResult
+from src.chat import submit_flow
+from src.chat.submit_flow import flow_get_personal_node
 from src.chat.graph import build_graph
 from src.llm.base import BaseLLMClient
 from src.llm.types import (
@@ -38,12 +42,9 @@ class StubClient(BaseLLMClient):
         if system and "决策" in system:
             user = messages[-1].content if messages else ""
             if "下拉框" in user:
-                plan = [{"ref": "d1", "data_key": "basic_info.location"}]
+                plan = {"所在城市": "广州"}
             else:
-                plan = [
-                    {"ref": "e1", "data_key": "basic_info.name"},
-                    {"ref": "e2", "data_key": "basic_info.phone"},
-                ]
+                plan = {"姓名": "张三", "电话": "手机"}
             yield TextChunk(delta=json.dumps(plan, ensure_ascii=False))
             return
 
@@ -68,10 +69,8 @@ SNAPSHOT_TEXT = (
 class FakeRegistry(ToolRegistry):
     """假工具注册器：记录调用并返回固定结果。"""
 
-    def __init__(self, multi_resume: bool = False):
+    def __init__(self):
         super().__init__()
-        self.multi_resume = multi_resume
-        self._upload_called = 0
         self.calls: dict[str, int] = {}
 
     def list_definitions(self):
@@ -84,25 +83,82 @@ class FakeRegistry(ToolRegistry):
         self._tally(name)
         if name == "browser_navigate":
             return ToolResult(output="页面已打开。请登录后回复「继续」。")
-        if name == "browser_snapshot":
-            return ToolResult(output=SNAPSHOT_TEXT)
-        if name == "browser_upload_resume":
-            self._upload_called += 1
-            if self.multi_resume and self._upload_called == 1:
-                return ToolResult(output="检测到 2 份简历：\n1. cv_a.pdf\n2. cv_b.pdf\n请告诉我要用哪一份。")
-            return ToolResult(output="已上传简历 cv.pdf，正在等待网页自动填写相关字段。")
-        if name == "getPersonalInfo":
-            return ToolResult(output=json.dumps({
-                "masked_basic_fields": ["phone"],
-                "basic_info": {"name": "张三", "phone": "***"},
-            }, ensure_ascii=False))
-        if name == "browser_fill_form":
-            return ToolResult(output="填写完成：\n- [e1] 姓名 → ***\n- [e2] 电话 → ***")
-        if name == "browser_probe_dropdowns":
-            return ToolResult(output="下拉框探测结果（共 1 个，未填 1 个）：\n- [dropdown1] 所在城市（未填）：北京、上海、广州")
-        if name == "browser_fill_dropdowns":
-            return ToolResult(output="下拉框填写结果：\n已填写（1）：\n- [dropdown1] → 北京")
         return ToolResult(output="ok")
+
+
+class _BrowserSide:
+    """模拟状态机直接调用的浏览器侧函数（不再经由 registry）。
+
+    与真实浏览器侧保持一致：快照返回三个 {字段名: ref} 字典，上传/填表返回
+    SubmitResult。用计数验证各节点恰好调用一次。
+    """
+
+    def __init__(self, multi_resume: bool = False):
+        self.multi_resume = multi_resume
+        self.snapshot_calls = 0
+        self.upload_calls = 0
+        self.fill_calls = 0
+        self.fill_dropdowns_calls = 0
+        self.profile_calls = 0
+        self.probe_calls = 0
+        self.last_fill_items: list[dict] | None = None
+        self.last_dropdown_items: list[dict] | None = None
+
+    async def snapshot(self):
+        self.snapshot_calls += 1
+        return (
+            {"姓名": "e1", "电话": "e2"},      # textbox_fields
+            {"所在城市": "d1"},                 # dropdown_fields
+            {"上传简历": "upload_btn"},         # upload_fields
+        )
+
+    async def upload(self, ref, resume):
+        self.upload_calls += 1
+        if self.multi_resume and self.upload_calls == 1:
+            return SubmitResult(
+                output="检测到 2 份简历：\n1. cv_a.pdf\n2. cv_b.pdf\n请告诉我要用哪一份。"
+            )
+        return SubmitResult(output="已上传简历 cv.pdf，正在等待网页自动填写相关字段。")
+
+    async def fill(self, items):
+        self.fill_calls += 1
+        self.last_fill_items = list(items)
+        return SubmitResult(output="填写完成：\n- [e1] 姓名 → 张三\n- [e2] 电话 → ***")
+
+    async def probe(self, fields):
+        self.probe_calls += 1
+        return {name: ["北京", "上海", "广州"] for name in fields}
+
+    async def fill_dropdowns(self, items, dropdown_fields):
+        self.fill_dropdowns_calls += 1
+        self.last_dropdown_items = list(items)
+        return SubmitResult(output="下拉框填写结果：\n已填写（1）：\n- [所在城市] → 广州")
+
+    def profile_load(self):
+        self.profile_calls += 1
+        return {
+            "masked_basic_fields": ["phone"],
+            "basic_fields_schema": [
+                {"key": "name", "label": "姓名", "type": "text"},
+                {"key": "phone", "label": "手机", "type": "text"},
+                {"key": "location", "label": "所在地点", "type": "text"},
+            ],
+            "basic_info": {
+                "name": "张三",
+                "phone": "18928733892",
+                "location": "广州",
+            },
+        }
+
+
+def _patch_browser_side(monkeypatch, side: _BrowserSide) -> None:
+    """把状态机节点直接调用的浏览器侧函数替换为确定性 stub。"""
+    monkeypatch.setattr(submit_flow, "process_browser_snapshot", side.snapshot)
+    monkeypatch.setattr(submit_flow, "browser_upload_resume", side.upload)
+    monkeypatch.setattr(submit_flow, "browser_fill_form", side.fill)
+    monkeypatch.setattr(submit_flow, "browser_probe_dropdowns", side.probe)
+    monkeypatch.setattr(submit_flow, "browser_fill_dropdowns", side.fill_dropdowns)
+    monkeypatch.setattr(profile_storage, "load", side.profile_load)
 
 
 def _base_state(**overrides) -> dict:
@@ -126,7 +182,7 @@ def waiting_login_flow() -> dict:
         "uploaded_resume": "",
         "resume_candidates": [],
         "personal_profile": {},
-        "dropdowns": [],
+        "dropdown_options": {},
         "dropdown_fill_plan": [],
     }
 
@@ -162,10 +218,12 @@ async def test_flow_enters_via_navigate():
 
 
 @pytest.mark.asyncio
-async def test_flow_completes_all_stages():
+async def test_flow_completes_all_stages(monkeypatch):
     """「继续」后自动经过快照→上传→再快照→个人信息→填表→探测→填下拉框。"""
     client = StubClient()
     registry = FakeRegistry()
+    side = _BrowserSide()
+    _patch_browser_side(monkeypatch, side)
     graph = build_graph(client, registry)
 
     state = _base_state(submit_flow=waiting_login_flow())
@@ -174,19 +232,36 @@ async def test_flow_completes_all_stages():
     assert final is not None and final.get("submit_flow") is not None
     assert final["submit_flow"]["current_stage"] == "completed"
 
-    # 同一 URL 只抓一次完整结构 + 简历解析后再抓一次（snapshot 共 2 次，自身有 twice 设计）
-    assert registry.calls.get("browser_snapshot", 0) == 2
-    # getPersonalInfo 只取一次
-    assert registry.calls.get("getPersonalInfo", 0) == 1
-    assert registry.calls.get("browser_probe_dropdowns", 0) == 1
-    assert registry.calls.get("browser_fill_dropdowns", 0) == 1
+    # 同一 URL 快照 2 次（flow_snapshot + 简历解析后 flow_snapshot_again）
+    assert side.snapshot_calls == 2
+    # 浏览器侧直接调用各一次（不经 registry）
+    assert side.profile_calls == 1
+    assert side.upload_calls == 1
+    assert side.fill_calls == 1
+    assert side.probe_calls == 1
+    assert side.fill_dropdowns_calls == 1
+    # 流程内不再经由 registry 调用 browser_fill_dropdowns
+    assert registry.calls.get("browser_fill_dropdowns", 0) == 0
+    # 已填写的下拉框（plan 覆盖的字段名）从 dropdown_fields 中移除，仅保留未填的
+    assert final["submit_flow"].get("dropdown_fields") == {}
+    assert final["submit_flow"].get("dropdown_fill_plan") == {"所在城市": "广州"}
+    # 填空框：脱敏标记「手机」在写入前回读真实值，报告展示 ***
+    assert side.last_fill_items is not None
+    assert {"ref": "e1", "value": "张三", "display": "张三"} in side.last_fill_items
+    assert {"ref": "e2", "value": "18928733892", "display": "***"} in side.last_fill_items
+    # 下拉框：值直接传入，未脱敏
+    assert side.last_dropdown_items == [
+        {"name": "所在城市", "value": "广州", "display": "广州"}
+    ]
 
 
 @pytest.mark.asyncio
-async def test_flow_multi_resume_waits_then_chooses():
+async def test_flow_multi_resume_waits_then_chooses(monkeypatch):
     """多份简历：停在 waiting_resume_choice，用户回复序号后继续。"""
     client = StubClient()
-    registry = FakeRegistry(multi_resume=True)
+    registry = FakeRegistry()
+    side = _BrowserSide(multi_resume=True)
+    _patch_browser_side(monkeypatch, side)
     graph = build_graph(client, registry)
 
     # 第一轮进入 waiting_resume_choice
@@ -194,7 +269,7 @@ async def test_flow_multi_resume_waits_then_chooses():
     final = await _run(graph, state)
 
     assert final["submit_flow"]["current_stage"] == "waiting_resume_choice"
-    assert registry.calls.get("browser_upload_resume", 0) == 1
+    assert side.upload_calls == 1
 
     # 第二轮用户回复选择 → 治愈最后完成
     flow = final["submit_flow"]
@@ -208,12 +283,35 @@ async def test_flow_multi_resume_waits_then_chooses():
     assert final2.get("submit_flow") is None or final2["submit_flow"]["current_stage"] in ("resume_uploaded", "completed")
 
 
+@pytest.mark.asyncio
+async def test_flow_get_personal_flattens_profile(monkeypatch):
+    """个人信息打平为 {前端标签: 真实值}，脱敏字段标签记录在 masked_labels。"""
+    side = _BrowserSide()
+    _patch_browser_side(monkeypatch, side)
+    flow = waiting_login_flow()
+
+    streamed: list[str] = []
+    original = submit_flow.get_stream_writer
+    submit_flow.get_stream_writer = lambda: lambda chunk: streamed.append(chunk.delta)
+    try:
+        result = await flow_get_personal_node(
+            {"submit_flow": flow}, config={}, client=None, registry=None
+        )
+    finally:
+        submit_flow.get_stream_writer = original
+
+    out_flow = result["submit_flow"]
+    # 只打平 basic_info，键为前端标签（姓名/手机），值保留真实值
+    assert out_flow["personal_profile"] == {"姓名": "张三", "手机": "18928733892", "所在地点": "广州"}
+    # 脱敏字段记录前端标签，供文本视图「标签:标签」占位与写表回读
+    assert out_flow["masked_labels"] == ["手机"]
+
+
 # 触发「决策系统」system 时不会被当成普通 chat，所以上面测试不成立时可用显式决策 client
 class DecisionStub(StubClient):
     async def stream(self, messages, system="", tools=None):
         if "决策" in system:
-            yield TextChunk(delta=json.dumps(
-                [{"ref": "e1", "data_key": "basic_info.name"}], ensure_ascii=False))
+            yield TextChunk(delta=json.dumps({"姓名": "张三"}, ensure_ascii=False))
             return
         yield TextChunk(delta="好的。")
 
@@ -225,21 +323,21 @@ async def test_decision_stub_returns_json():
     collected = []
     async for ev in client.stream(msgs, system=_DECISION_SYSTEM):
         collected.append(ev.delta)
-    assert json.loads("".join(collected)) == [{"ref": "e1", "data_key": "basic_info.name"}]
+    assert json.loads("".join(collected)) == {"姓名": "张三"}
 
 
 @pytest.mark.asyncio
 async def test_browser_error_clears_flow(monkeypatch):
-    """browser_snapshot 失败 → submit_flow 清空、回到普通对话。"""
+    """浏览器侧操作失败（上传简历出错）→ submit_flow 清空、回到普通对话。"""
     client = StubClient()
     registry = FakeRegistry()
+    side = _BrowserSide()
+    _patch_browser_side(monkeypatch, side)
 
-    async def failing_execute(name, arguments=None):
-        if name == "browser_snapshot":
-            return ToolResult(output="无法获取表单快照：浏览器未连接", is_error=True)
-        return await FakeRegistry.execute(registry, name, arguments)
+    async def failing_upload(ref, resume):
+        return SubmitResult(output="上传简历失败：浏览器不可用", is_error=True)
 
-    monkeypatch.setattr(registry, "execute", failing_execute)
+    monkeypatch.setattr(submit_flow, "browser_upload_resume", failing_upload)
     graph = build_graph(client, registry)
 
     state = _base_state(submit_flow=waiting_login_flow())
@@ -250,4 +348,4 @@ async def test_browser_error_clears_flow(monkeypatch):
         "waiting_login",
     )
     texts = [m.content for m in final["messages"] if m.role == "assistant"]
-    assert any("获取表单快照失败" in t for t in texts)
+    assert any("上传简历失败" in t for t in texts)

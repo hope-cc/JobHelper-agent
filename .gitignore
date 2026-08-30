@@ -19,9 +19,11 @@ CLAUDE.md
 
 # 日志
 log/
+example/
 
 # Playwright MCP 服务输出（快照等）
 .playwright-mcp/
 
 #持久化
 data/
+

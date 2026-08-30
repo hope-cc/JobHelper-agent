@@ -205,49 +205,6 @@ def has_value(el: dict) -> bool:
     return bool(el.get("value"))
 
 
-# ---- 脱敏取值 ----
-
-def resolve_profile_value(profile: dict | None, data_key: str) -> str | None:
-    """从个人信息中取真实值，支持 `basic_info.x`、`education[i].y`、顶层键。
-
-    取不到或值为空返回 None。
-    """
-    if not profile or not data_key:
-        return None
-
-    m = re.match(r"^(\w+)\[(\d+)\]\.(.+)$", data_key)
-    if m:
-        section, idx, key = m.group(1), int(m.group(2)), m.group(3)
-        items = profile.get(section) or []
-        if 0 <= idx < len(items) and isinstance(items[idx], dict):
-            val = items[idx].get(key)
-            return val if val else None
-        return None
-
-    parts = data_key.split(".")
-    if len(parts) == 2:
-        section, key = parts
-        section_data = profile.get(section)
-        if isinstance(section_data, dict):
-            val = section_data.get(key)
-            return val if val else None
-        return None
-
-    val = profile.get(data_key)
-    return val if val else None
-
-
-def display_value(data_key: str, value: str, profile: dict | None) -> str:
-    """按脱敏标记显示值：命中 masked_basic_fields 的字段显示 ***。"""
-    if not value:
-        return value
-    masked = (profile or {}).get("masked_basic_fields") or []
-    field = data_key.rsplit(".", 1)[-1]
-    if field in masked or data_key in masked:
-        return "***"
-    return value
-
-
 def match_combobox_value(options: list[dict], value: str) -> str | None:
     """在下拉选项中匹配真实值（精确优先，其次包含），返回匹配到的选项值。"""
     for opt in options:

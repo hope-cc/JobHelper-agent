@@ -12,7 +12,7 @@ from pathlib import Path
 
 from src.browser_mcp.client import call_tool
 from src.browser_mcp.fill import is_upload_candidate
-
+from src.browser_mcp.types import SubmitResult
 DATA_CV_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "CV"
 
 # 上传后等待网页解析简历的时长（秒）
@@ -125,3 +125,20 @@ async def upload_and_wait(ref: str, path: Path) -> tuple[str, bool]:
         return text, err
     await asyncio.sleep(PARSE_WAIT_SECONDS)
     return last_text, last_err
+
+async def browser_upload_resume(ref: str, resume: str):
+    choice = resolve_resume(resume)
+    if choice.action == "ask":
+        return SubmitResult(output=choice.message)
+    if choice.action == "error":
+        return SubmitResult(output=choice.message, is_error=True)
+
+    text, err = await upload_and_wait(ref, choice.path)
+    if err:
+        return SubmitResult(output=f"上传失败：{text}", is_error=True)
+
+    return SubmitResult(
+        output=(
+            f"已上传简历 {choice.path.name}，正在等待网页解析并自动填写相关字段"
+        )
+    )
