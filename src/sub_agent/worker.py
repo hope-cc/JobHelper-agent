@@ -43,6 +43,7 @@ def _build_system_prompt(task: dict) -> str:
     "工作职责": "",
     "任职要求": "",
     "工作地点": "",
+    "专业要求": "",
     "投递方式": ""
 }
 
@@ -61,6 +62,7 @@ def _build_system_prompt(task: dict) -> str:
         "工作职责": "招聘网页中的原文",
         "任职要求": "招聘网页中的原文",
         "工作地点": "广州/深圳",
+        "专业要求": "自动化、计算机、集成电路",
         "投递方式": "官网投递：https://cmbnt.cmbchina.com"
     }
 ]

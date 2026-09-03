@@ -7,26 +7,19 @@
 
 from __future__ import annotations
 
-import asyncio
-
 from src.browser_mcp.dropdown import (
     close_popup,
     expand_popup,
     popup_option_texts,
 )
 
-# 点击后等待渲染的固定短延迟（秒）
-PROBE_WAIT_SECONDS = 0.3
-
 
 async def _probe_row(ref: str) -> tuple[list[str], str]:
-    """展开单个下拉框并提取选项文本。返回 (选项列表, 错误信息)。"""
-    popup, err = None, ""
-    for _ in range(2):  # 首次失败重试一次
-        popup, err = await expand_popup(ref)
-        if not err:
-            break
-        await asyncio.sleep(PROBE_WAIT_SECONDS)
+    """展开单个下拉框并提取选项文本。返回 (选项列表, 错误信息)。
+
+    探测失败不重试，直接返回空列表。
+    """
+    popup, err = await expand_popup(ref)
     if err:
         return [], err
     options = popup_option_texts(popup)
