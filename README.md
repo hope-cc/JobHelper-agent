@@ -9,12 +9,12 @@
 ### 1. 浏览器自动化投递 —— 一句话搞定简历投递
 Agent 通过 Playwright MCP 以有头浏览器打开投递页，由确定性状态机（LangGraph）接管完整的投递链路：**等待登录 → 上传简历 → 快照分析表单 → 自动填基本信息 → 识别并填写下拉框**，期间只在与用户交互（登录、选择简历）或语义判断时停顿，不再依赖大模型临场编排，每一步都能看到浏览器实时操作。
 
-![投递流程自动填写](docs/images/apply-flow.gif)
+![投递流程自动填写](docs/images/apply-flow.png)
 
 ### 2. 岗位知识库 + 混合检索 (RAG)
 抓取过的职位信息会向量化入库（ChromaDB + Ollama bge-m3 稠密向量，jieba 分词 + BM25 稀疏检索，RRF 融合排序）。Agent 直接回答「XX 公司的 Java 岗要求是什么」「有哪些上海的算法岗」，不用你翻几十个网页。
 
-![岗位检索问答](docs/images/rag-chat.gif)
+<!-- ![岗位检索问答](docs/images/rag-chat.gif) -->
 
 ### 3. 子 Agent 并行调度，批量抓取
 主 Agent 分析出招聘网站上的公司列表后，通过 `dispatchTasks` 把成百上千条「点击 + 抓详情」任务池化派发给多个子 Agent 并发执行，客户端池自动限流，结果按结构化格式回传并去重入库。
@@ -25,11 +25,14 @@ Agent 通过 Playwright MCP 以有头浏览器打开投递页，由确定性状�
 - **个人信息管理**：字段自定义 + 敏感字段自动脱敏，投递表单一键回填。
 
 ![求职工作台](docs/images/dashboard.png)
+![求职工作台](docs/images/profile.png)
+![求职工作台](docs/images/resume.png)
+
 
 ### 5. 双协议流式兼容
 同时兼容 **Anthropic** 与 **OpenAI** 流式事件协议，通过可配置的 LLM 供应商层接入任意模型（支持扩展思考/thinking），前后端走 SSE 实时推送打字机效果、思考过程与工具调用状态。
 
-![对话流式界面](docs/images/chat.png)
+<!-- ![对话流式界面](docs/images/chat.png) -->
 
 ---
 
