@@ -118,29 +118,3 @@ JobHelper/
 
 ---
 
-## 🖼️ 截图占位说明
-
-以上 README 中的图片均为占位符，推荐按下表截图替换（文件名与 `docs/images/` 路径一一对应）：
-
-| 占位文件 | 建议截图内容 | 操作步骤 |
-| --- | --- | --- |
-| `docs/images/apply-flow.gif` | **投递流程自动填写** | 在聊天页让 Agent 打开一个投递页，录屏展示「上传简历 → 自动填表 → 填下拉框 → 提交成功」全过程 |
-| `docs/images/rag-chat.gif` | **岗位库检索问答** | 聊天页提问「有哪些后端开发的岗位」，展示 Agent 调 `searchJobs` 返回结构化职位结果 |
-| `docs/images/chat.png` | **主对话界面**（新聊天/会话页） | 一个完整的流式对话页面，含打字机效果、工具调用状态 |
-| `docs/images/dashboard.png` | **投递进度页** | 点击左侧「投递进度」：统计卡片（本月/进行中/Offer/已拒）+ 投递记录表 |
-| `docs/images/resume.png` | **简历管理页** | 点击左侧「简历管理」：块状编辑器 + 生成后的 LaTeX/PDF 预览 |
-| `docs/images/profile.png` | **个人信息管理页** | 点击左侧「个人信息管理」：基本信息、教育/获奖/语言条目、敏感字段脱敏开关 |
-
-> GIF 推荐使用 [ScreenToGif](https://www.screentogif.com/) 或 macOS `QuickTime` + `gifski` 录制导出。
-
----
-
-## 🧩 相关技能
-
-本项目文档中沉淀了若干可复用的求职侧能力（简历酥化、面试追问、进度管理、开源贡献等），均以 Claude Code / ASU 技能形式维护。
-
----
-
-## 📄 License
-
-MIT
