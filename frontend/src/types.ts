@@ -224,6 +224,7 @@ export interface JobRecord {
   id: string;
   company: string; // 必填
   position: string; // 必填
+  industry: string; // 选填
   applied_at: string; // YYYY-MM-DD
   status: JobStatus;
   next_step: string;

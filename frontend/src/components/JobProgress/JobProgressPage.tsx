@@ -5,8 +5,10 @@ import MetricCards from "./MetricCards";
 import JobToolbar from "./JobToolbar";
 import JobTable from "./JobTable";
 import JobFormModal from "./JobFormModal";
+import Pagination from "./Pagination";
 
-const CSV_HEADER = ["时间", "公司", "岗位", "进度", "下一步", "备注"];
+const CSV_HEADER = ["时间", "公司", "岗位", "行业", "进度", "下一步", "备注"];
+const PAGE_SIZE = 15;
 
 function todayMonth(): string {
   const d = new Date();
@@ -18,6 +20,7 @@ export default function JobProgressPage() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<JobStatus | "">("");
   const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
+  const [page, setPage] = useState(1);
   const [modal, setModal] = useState<{
     mode: "create" | "edit";
     initial: JobRecord | null;
@@ -71,6 +74,14 @@ export default function JobProgressPage() {
     return { total: jobs.length, active, offer, rejected, monthly };
   }, [jobs]);
 
+  // 分页派生：基于过滤后全量，页码自动 clamp，避免筛选后出现空白页
+  const totalPages = Math.max(1, Math.ceil(displayed.length / PAGE_SIZE));
+  const effectivePage = Math.min(Math.max(page, 1), totalPages);
+  const pageItems = displayed.slice(
+    (effectivePage - 1) * PAGE_SIZE,
+    effectivePage * PAGE_SIZE
+  );
+
   const handleCreate = useCallback(
     (payload: JobPayload) => {
       jobClient
@@ -109,6 +120,7 @@ export default function JobProgressPage() {
       rec.applied_at,
       rec.company,
       rec.position,
+      rec.industry,
       rec.status,
       rec.next_step,
       rec.remark,
@@ -187,8 +199,10 @@ export default function JobProgressPage() {
           />
 
           <div className="mt-4 overflow-x-auto">
-            <JobTable records={displayed} onEdit={(rec) => setModal({ mode: "edit", initial: rec })} />
+            <JobTable records={pageItems} onEdit={(rec) => setModal({ mode: "edit", initial: rec })} />
           </div>
+
+          <Pagination page={effectivePage} totalPages={totalPages} onPageChange={setPage} />
         </section>
       </div>
 

@@ -15,10 +15,17 @@ def _ensure_dir() -> None:
 
 
 def load() -> list:
-    """读取全部投递记录。文件不存在返回空列表。"""
+    """读取全部投递记录。文件不存在返回空列表。
+
+    旧记录可能缺 `industry` 字段，返回前统一补齐为空字符串，
+    保证调用方拿到的每条记录字段完整。
+    """
     if not DATA_FILE.exists():
         return []
-    return json.loads(DATA_FILE.read_text(encoding="utf-8"))
+    records = json.loads(DATA_FILE.read_text(encoding="utf-8"))
+    for rec in records:
+        rec.setdefault("industry", "")
+    return records
 
 
 def save(records: list) -> None:

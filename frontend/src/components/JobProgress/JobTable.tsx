@@ -29,6 +29,7 @@ export default function JobTable({ records, onEdit }: JobTableProps) {
           <th className="px-4 py-3 rounded-l-lg font-medium">时间</th>
           <th className="px-4 py-3 font-medium">公司</th>
           <th className="px-4 py-3 font-medium">岗位</th>
+          <th className="px-4 py-3 font-medium">行业</th>
           <th className="px-4 py-3 font-medium">进度</th>
           <th className="px-4 py-3 font-medium">下一步</th>
           <th className="px-4 py-3 rounded-r-lg font-medium">操作</th>
@@ -47,6 +48,9 @@ export default function JobTable({ records, onEdit }: JobTableProps) {
               {rec.company}
             </td>
             <td className="px-4 py-3 text-slate-600">{rec.position}</td>
+            <td className="px-4 py-3 text-slate-500 whitespace-nowrap">
+              {rec.industry || "—"}
+            </td>
             <td className="px-4 py-3">
               <span
                 className={`inline-block rounded-full px-3 py-1 text-xs font-medium border ${JOB_STATUS_STYLE[rec.status]}`}

@@ -21,6 +21,7 @@ class JobRecordBody(BaseModel):
 
     company: str
     position: str
+    industry: str = ""
     applied_at: str
     status: str
     next_step: str = ""

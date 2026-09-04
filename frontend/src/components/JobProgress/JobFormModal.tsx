@@ -23,6 +23,7 @@ export default function JobFormModal({
 }: JobFormModalProps) {
   const [company, setCompany] = useState(initial?.company ?? "");
   const [position, setPosition] = useState(initial?.position ?? "");
+  const [industry, setIndustry] = useState(initial?.industry ?? "");
   const [appliedAt, setAppliedAt] = useState(initial?.applied_at ?? today());
   const [status, setStatus] = useState(initial?.status ?? "简历已投递");
   const [nextStep, setNextStep] = useState(initial?.next_step ?? "");
@@ -38,6 +39,7 @@ export default function JobFormModal({
     onSubmit({
       company: company.trim(),
       position: position.trim(),
+      industry: industry.trim(),
       applied_at: appliedAt,
       status,
       next_step: nextStep,
@@ -77,6 +79,17 @@ export default function JobFormModal({
                 className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/30"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm text-slate-600 mb-1">行业</label>
+            <input
+              type="text"
+              value={industry}
+              onChange={(e) => setIndustry(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/30"
+              placeholder="如：互联网、新能源（选填）"
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
